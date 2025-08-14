@@ -12,7 +12,7 @@ const AirQualityForm = () => {
     hum: 60,
     voc: 12,
     co2: 410,
-    O3: 30,
+   // O3: 30,
     PM25: 15,
     PM10: 35,
     PM1: 10
@@ -53,7 +53,7 @@ const AirQualityForm = () => {
       hum: 60,
       voc: 12,
       co2: 410,
-      O3: 30,
+     // O3: 30,
       PM25: 15,
       PM10: 35,
       PM1: 10
@@ -136,8 +136,8 @@ const AirQualityForm = () => {
           <label className="block text-sm font-medium text-gray-700">O₃ (µg/m³)</label>
           <input
             type="number"
-            name="O3"
-            value={formData.O3}
+           // name="O3"
+            //value={formData.O3}
             onChange={handleChange}
             className="mt-1 p-2 w-full border rounded-md"
             step="0.1"
@@ -192,7 +192,8 @@ const AirQualityForm = () => {
             {dataList.map(data => (
               <li key={data.id} className="p-2 bg-gray-100 rounded-md">
                 NO₂: {data.no2} µg/m³, Temp: {data.temp} °C, Hum: {data.hum}%, 
-                VOC: {data.voc} ppb, CO₂: {data.co2} ppm, O₃: {data.O3} µg/m³, 
+                VOC: {data.voc} ppb, CO₂: {data.co2} ppm, 
+                O₃: {data.O3} µg/m³, 
                 PM2.5: {data.PM25} µg/m³, PM10: {data.PM10} µg/m³, PM1: {data.PM1} µg/m³
               </li>
             ))}

@@ -33,7 +33,7 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
       temp: { unit: '°C', title: 'Temperature', color: '#2563eb' },
       hum: { unit: '%', title: 'Humidity', color: '#059669' },
       co2: { unit: 'ppm', title: 'CO2', color: '#dc2626' },
-      o3: { unit: 'ppb', title: 'Ozone', color: '#7c3aed' },
+     // o3: { unit: 'ppb', title: 'Ozone', color: '#7c3aed' },
       pm25: { unit: 'μg/m³', title: 'PM2.5', color: '#ea580c' },
       pm10: { unit: 'μg/m³', title: 'PM10', color: '#d97706' },
       pressure: { unit: 'hPa', title: 'Pressure', color: '#0891b2' },
@@ -397,8 +397,7 @@ const NewGraph = ({data, dataType}) => {
         gap: '10px',
         alignItems: 'center'
       }}>
-        <span style={{ fontWeight: 'bold' }}>Select Data Type:</span>
-        
+      
       </div>
       
       <ZoomableEnvironmentalGraph 

@@ -74,14 +74,14 @@ const ParameterDetailComponent = ({
             color: parameter.color,
             margin: '0 0 8px 0'
           }}>
-            {parameter.name} - {parameter.description}
+            {parameter.name === 'PM25' ? 'PM2.5' : parameter.name} - {parameter.description}
           </h1>
           <p style={{ 
             fontSize: '14px', 
             color: '#6b7280',
             margin: '0'
           }}>
-            Last Updated: 2 minutes ago
+            Last Updated: 3 minutes ago
           </p>
         </div>
         
@@ -148,7 +148,7 @@ const ParameterDetailComponent = ({
                 fontWeight: '500', 
                 color: '#374151' 
               }}>
-                Live {parameter.name}
+                Live {parameter.name === 'PM25' ? 'PM2.5' : parameter.name}
               </span>
             </div>
 
@@ -215,7 +215,7 @@ const ParameterDetailComponent = ({
           <div style={{ 
             position: 'relative',
             height: '20px',
-            background: 'linear-gradient(to right, #22c55e 0%, #22c55e 16.67%, #f59e0b 16.67%, #f59e0b 33.33%, #f97316 33.33%, #f97316 50%, #ef4444 50%, #ef4444 66.67%, #8b5cf6 66.67%, #8b5cf6 83.33%, #7f1d1d 83.33%, #7f1d1d 100%)',
+            background: 'linear-gradient(to right, #22c55e, #f59e0b, #f97316, #ef4444, #8b5cf6, #7f1d1d)',
             borderRadius: '10px',
             marginBottom: '15px'
           }}>
@@ -223,7 +223,7 @@ const ParameterDetailComponent = ({
             <div style={{
               position: 'absolute',
               top: '-2px',
-              left: `${Math.min((parameter.value / 300) * 100, 100)}%`,
+              left: `${Math.min((parameter.value / parameter.threshold.veryhazardous)* 100, 100)}%`,
               transform: 'translateX(-50%)',
               width: '10px',
               height: '10px',
@@ -245,12 +245,12 @@ const ParameterDetailComponent = ({
             marginBottom: '8px'
           }}>
             <span>0</span>
-            <span>50</span>
-            <span>100</span>
-            <span>150</span>
-            <span>200</span>
-            <span>300</span>
-            <span>301+</span>
+            <span>{parameter.threshold.good}</span>
+            <span>{parameter.threshold.moderate}</span>
+            <span>{parameter.threshold.unhealthy}</span>
+            <span>{parameter.threshold.veryUnhealthy}</span>
+            <span>{parameter.threshold.hazardous}</span>
+            <span>{parameter.threshold.veryhazardous}</span>
           </div>
 
           {/* Scale Labels */}
@@ -262,9 +262,9 @@ const ParameterDetailComponent = ({
           }}>
             <span style={{ color: '#22c55e', textAlign: 'center', flex: 1 }}>Good</span>
             <span style={{ color: '#f59e0b', textAlign: 'center', flex: 1 }}>Moderate</span>
-            <span style={{ color: '#f97316', textAlign: 'center', flex: 1 }}>Poor</span>
+            <span style={{ color: '#f97316', textAlign: 'center', flex: 1 }}>Unhealthy for Sensitive Groups</span>
             <span style={{ color: '#ef4444', textAlign: 'center', flex: 1 }}>Unhealthy</span>
-            <span style={{ color: '#8b5cf6', textAlign: 'center', flex: 1 }}>Severe</span>
+            <span style={{ color: '#8b5cf6', textAlign: 'center', flex: 1 }}>Very Unhealthy</span>
             <span style={{ color: '#7f1d1d', textAlign: 'center', flex: 1 }}>Hazardous</span>
           </div>
         </div>
