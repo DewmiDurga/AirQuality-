@@ -7,7 +7,7 @@ import NewGraph from './components/newGraph';
 
 const BreathEasyDashboard = () => {
     const databaseURL = "https://breath-easy-2-default-rtdb.asia-southeast1.firebasedatabase.app/";
-    const itemsEndpoint = `${databaseURL}/2025_8_16.json`;
+    const itemsEndpoint = `${databaseURL}/2025_8_17.json`;
     const [fetchedData, setFetchedData] = useState([]);
     const [fetchError, setFetchError] = useState('');
     const [lastItem, setLastItem] = useState({});
@@ -396,7 +396,7 @@ const BreathEasyDashboard = () => {
                                     {lastItem.aqi !== undefined ? lastItem.aqi : '--'}
                                 </div>
                                 
-                                {/* PM Values */}
+                                {/* PM Values
                                 <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
                                     <div>
                                         <div style={{ fontSize: '14px', color: '#64748b', fontWeight: '500' }}>PM10</div>
@@ -410,7 +410,7 @@ const BreathEasyDashboard = () => {
                                             {lastItem.PM25 !== undefined ? `${lastItem.PM25} µg/m³` : '--'}
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
                                 
                                 {/* AQI Scale */}
                                 <div style={{ marginBottom: '16px' }}>
