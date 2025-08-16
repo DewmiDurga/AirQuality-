@@ -99,39 +99,85 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
     const detailLevel = (zoomFactor - 1) / 7; // 0 to 1 scale
 
     // Create interpolated dataset based on zoom level
-    dataset.forEach(day => {
-      const dayDate = new Date(day.date);
-      const dayAverage = getAverage(day);
-      const pointsToShow = Math.max(1, Math.floor(1 + (day.values.length - 1) * detailLevel));
+//     dataset.forEach(entry => {
+//       // console.log("day: ", day.date)
+//       // const dayDate = new Date(day.date);
+//       // console.log("day: ", dayDate)
+//       const [year, month, day, hour, minute, second] = entry.split("_").map(Number);
+
+// // Create a valid JS date
+//       const dayDate = new Date(year, month - 1, day, hour, minute, second);
+//       console.log('datDate', dayDate);
       
-      for (let i = 0; i < pointsToShow; i++) {
-        const progress = i / Math.max(pointsToShow - 1, 1);
-        const time = new Date(dayDate);
-        time.setHours(progress * 24);
+//       const dayAverage = getAverage(day);
+//       const pointsToShow = Math.max(1, Math.floor(1 + (day.values.length - 1) * detailLevel));
+      
+//       for (let i = 0; i < pointsToShow; i++) {
+//         const progress = i / Math.max(pointsToShow - 1, 1);
+//         const time = new Date(dayDate);
+//         time.setHours(progress * 24);
         
-        let value;
-        if (detailLevel === 0) {
-          // Pure average
-          value = dayAverage;
-        } else if (detailLevel === 1) {
-          // Pure individual readings
-          const readingIndex = Math.floor(progress * (day.values.length - 1));
-          value = day.values[readingIndex] || day.values[day.values.length - 1];
-        } else {
-          // Interpolated between average and readings
-          const readingIndex = Math.floor(progress * (day.values.length - 1));
-          const reading = day.values[readingIndex] || day.values[day.values.length - 1];
-          value = dayAverage * (1 - detailLevel) + reading * detailLevel;
-        }
+//         let value;
+//         if (detailLevel === 0) {
+//           // Pure average
+//           value = dayAverage;
+//         } else if (detailLevel === 1) {
+//           // Pure individual readings
+//           const readingIndex = Math.floor(progress * (day.values.length - 1));
+//           value = day.values[readingIndex] || day.values[day.values.length - 1];
+//         } else {
+//           // Interpolated between average and readings
+//           const readingIndex = Math.floor(progress * (day.values.length - 1));
+//           const reading = day.values[readingIndex] || day.values[day.values.length - 1];
+//           value = dayAverage * (1 - detailLevel) + reading * detailLevel;
+//         }
         
-        interpolatedData.push({
-          date: time,
-          value: value,
-          type: detailLevel < 0.3 ? 'average' : 'mixed',
-          detailLevel: detailLevel
-        });
-      }
+//         interpolatedData.push({
+//           date: time,
+//           value: value,
+//           type: detailLevel < 0.3 ? 'average' : 'mixed',
+//           detailLevel: detailLevel
+//         });
+//       }
+//     });
+
+    dataset.forEach(entry => {
+  // Extract date parts from the string
+  const [year, month, dayNum, hour, minute, second] = entry.date.split("_").map(Number);
+
+  // Create a valid Date object
+  const dayDate = new Date(year, month - 1, dayNum, hour, minute, second);
+  console.log('dayDate', dayDate);
+  
+  const dayAverage = getAverage(entry);
+  const pointsToShow = Math.max(1, Math.floor(1 + (entry.values.length - 1) * detailLevel));
+
+  for (let i = 0; i < pointsToShow; i++) {
+    const progress = i / Math.max(pointsToShow - 1, 1);
+    const time = new Date(dayDate);
+    time.setHours(progress * 24);
+    
+    let value;
+    if (detailLevel === 0) {
+      value = dayAverage;
+    } else if (detailLevel === 1) {
+      const readingIndex = Math.floor(progress * (entry.values.length - 1));
+      value = entry.values[readingIndex] || entry.values[entry.values.length - 1];
+    } else {
+      const readingIndex = Math.floor(progress * (entry.values.length - 1));
+      const reading = entry.values[readingIndex] || entry.values[entry.values.length - 1];
+      value = dayAverage * (1 - detailLevel) + reading * detailLevel;
+    }
+    
+    interpolatedData.push({
+      date: time,
+      value: value,
+      type: detailLevel < 0.3 ? 'average' : 'mixed',
+      detailLevel: detailLevel
     });
+  }
+});
+
 
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
