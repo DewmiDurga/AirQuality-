@@ -7,7 +7,7 @@ import NewGraph from './components/newGraph';
 
 const BreathEasyDashboard = () => {
     const databaseURL = "https://breath-easy-2-default-rtdb.asia-southeast1.firebasedatabase.app/";
-    const itemsEndpoint = `${databaseURL}/2025_8_17.json`;
+    const itemsEndpoint = `${databaseURL}/2025_8_7.json`;
     const [fetchedData, setFetchedData] = useState([]);
     const [fetchError, setFetchError] = useState('');
     const [lastItem, setLastItem] = useState({});
