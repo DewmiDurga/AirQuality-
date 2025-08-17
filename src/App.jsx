@@ -4,10 +4,11 @@ import ParameterDetailComponent from './components/parameters';
 import axios from 'axios';
 import AirQualityForm from './components/AddData';
 import NewGraph from './components/newGraph';
+import AirQualityDashboard from './components/graph';
 
 const BreathEasyDashboard = () => {
     const databaseURL = "https://breath-easy-2-default-rtdb.asia-southeast1.firebasedatabase.app/";
-    const itemsEndpoint = `${databaseURL}/2025_8_7.json`;
+    const itemsEndpoint = `${databaseURL}2025_08_17.json`;
     const [fetchedData, setFetchedData] = useState([]);
     const [fetchError, setFetchError] = useState('');
     const [lastItem, setLastItem] = useState({});
@@ -270,6 +271,22 @@ const BreathEasyDashboard = () => {
                     >
                         Current Readings
                     </button>
+                    <button
+    onClick={() => setActiveSection('graph')}
+    style={{
+        backgroundColor: activeSection === 'graph' ? '#295dc3ff' : 'rgba(41, 93, 195, 0.7)',
+        color: 'white',
+        padding: '8px 16px',
+        border: 'none',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontSize: '14px',
+        fontWeight: '600',
+        transition: 'background-color 0.2s'
+    }}
+>
+    Previous Charts 
+</button>
                     <button
                         onClick={() => setActiveSection('contact')}
                         style={{
@@ -629,7 +646,19 @@ const BreathEasyDashboard = () => {
                             })}
                         </div>
                     </>
-                ) : (
+             ) : activeSection === 'graph' ? (
+    <div>
+        <h2 style={{ 
+            fontSize: '20px', 
+            fontWeight: '600', 
+            color: '#161d38ff',
+            marginBottom: '24px'
+        }}>
+            Previous Air Quality Charts
+        </h2>
+        <AirQualityDashboard />
+    </div>
+) : (
                     <div style={{
                         backgroundColor: 'white',
                         borderRadius: '20px',

@@ -204,14 +204,14 @@ const ParameterDetailComponent = ({
         </div>
 
         {/* Horizontal Scale Bar matching the photo */}
-        <div style={{ 
+          {/* <div style={{ 
           marginTop: '25px',
           padding: '1px',
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           borderRadius: '12px',
           border: '1px solid rgba(255, 255, 255, 0.2)'
         }}>
-          {/* Scale Bar with colors from photo */}
+         
           <div style={{ 
             position: 'relative',
             height: '20px',
@@ -219,7 +219,6 @@ const ParameterDetailComponent = ({
             borderRadius: '10px',
             marginBottom: '15px'
           }}>
-            {/* Current Value Indicator */}
             <div style={{
               position: 'absolute',
               top: '-2px',
@@ -235,7 +234,7 @@ const ParameterDetailComponent = ({
             }}></div>
           </div>
 
-          {/* Scale Numbers */}
+         
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between',
@@ -253,7 +252,7 @@ const ParameterDetailComponent = ({
             <span>{parameter.threshold.veryhazardous}</span>
           </div>
 
-          {/* Scale Labels */}
+         
           <div style={{ 
             display: 'flex',
             justifyContent: 'space-between',
@@ -267,8 +266,8 @@ const ParameterDetailComponent = ({
             <span style={{ color: '#ef4444', textAlign: 'center', flex: 1 }}>Unhealthy</span>
             <span style={{ color: '#8b5cf6', textAlign: 'center', flex: 1 }}>Very Unhealthy</span>
             <span style={{ color: '#7f1d1d', textAlign: 'center', flex: 1 }}>Hazardous</span>
-          </div>
-        </div>
+          </div> 
+        </div>  */}
       </div>
     </div>
   );
