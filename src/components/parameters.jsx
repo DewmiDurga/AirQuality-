@@ -258,6 +258,7 @@ const ParameterDetailComponent = ({
             display: 'flex',
             justifyContent: 'space-between',
             fontSize: '11px',
+            
             fontWeight: '600'
           }}>
             <span style={{ color: '#22c55e', textAlign: 'center', flex: 1 }}>Good</span>
