@@ -1,752 +1,4 @@
-// import React, { useState, useMemo, useRef, useEffect } from 'react';
-// import * as d3 from 'd3';
-// import { Calendar, Thermometer, Wind, Droplets, Activity, TrendingUp } from 'lucide-react';
 
-// const AirQualityDashboard = ({ data }) => {
-//   const [selectedMetric, setSelectedMetric] = useState('aqi');
-//   const [chartType, setChartType] = useState('line');
-//   const [dateRange, setDateRange] = useState('all');
-//   const svgRef = useRef(null);
-
-//   // Process and flatten the nested data with better date parsing
-//   const processedData = useMemo(() => {
-//     console.log('Raw data:', data); // Debug log
-//     const flatData = [];
-    
-//     // Process date-based entries
-//     Object.keys(data).forEach(dateKey => {
-//       console.log('Processing dateKey:', dateKey); // Debug log
-      
-//       if (dateKey.includes('_') && dateKey.match(/^\d{4}_\d{1,2}_\d{1,2}$/)) {
-//           console.log('Processing dateKey:', dateKey);
-//         const dayData = data[dateKey];
-//         console.log('Day data:', dayData); // Debug log
-        
-//         Object.keys(dayData).forEach(timeKey => {
-//           console.log('Processing timeKey:', timeKey); // Debug log
-//           const reading = dayData[timeKey];
-          
-//           if (reading && typeof reading === 'object') {
-//             try {
-//               // Parse date and time - handle different formats
-//               const [year, month, day] = dateKey.split('_').map(num => parseInt(num));
-//               const [hour, minute, second] = timeKey.split('_').map(num => parseInt(num));
-              
-//               console.log(`Parsed: ${year}-${month}-${day} ${hour}:${minute}:${second}`); // Debug log
-              
-//               const timestamp = new Date(year, month - 1, day, hour, minute, second || 0);
-              
-//               // Validate the timestamp
-//               if (isNaN(timestamp.getTime())) {
-//                 console.warn('Invalid timestamp created:', { dateKey, timeKey, year, month, day, hour, minute, second });
-//                 return;
-//               }
-
-//               // More aggressive filtering of erroneous readings
-//               const cleanedReading = {
-//                 ...reading,
-//                 aqi: (reading.aqi > 500 || reading.aqi < 0) ? null : reading.aqi,
-//                 pm25: (reading.pm25 > 500 || reading.pm25 < 0) ? null : reading.pm25,
-//                 co2: (reading.co2 === 0 || reading.co2 > 5000) ? null : reading.co2,
-//                 temp: (reading.temp > 60 || reading.temp < -20) ? null : reading.temp,
-//                 hum: (reading.hum > 100 || reading.hum < 0) ? null : reading.hum,
-//               };
-
-//               const processedEntry = {
-//                 timestamp,
-//                 date: timestamp.toLocaleDateString(),
-//                 time: timestamp.toLocaleTimeString(),
-//                 dateTime: timestamp.toLocaleString(),
-//                 ...cleanedReading
-//               };
-              
-//               console.log('Processed entry:', processedEntry); // Debug log
-//               flatData.push(processedEntry);
-//             } catch (error) {
-//               console.error('Error processing data point:', error, { dateKey, timeKey, reading });
-//             }
-//           }
-//         });
-//       }
-//     });
-    
-//     console.log('Final processed data:', flatData); // Debug log
-//     // Sort by timestamp
-//     return flatData.sort((a, b) => a.timestamp - b.timestamp);
-//   }, [data]);
-
-//   // Filter data based on date range - FINAL DAY VERSION
-//   const filteredData = useMemo(() => {
-//     if (dateRange === 'all') return processedData;
-    
-//     // Find the latest date in the data
-//     const latestDataPoint = processedData[processedData.length - 1];
-//     if (!latestDataPoint) return processedData;
-    
-//     const latestDate = latestDataPoint.timestamp;
-//     console.log('Latest data point date:', latestDate); // Debug log
-    
-//     let startDate, endDate;
-    
-//     switch (dateRange) {
-//       case '24h':
-//         // Show the entire final day (00:00 AM to 11:59 PM of the latest day)
-//         endDate = new Date(latestDate);
-//         endDate.setHours(23, 59, 59, 999); // Set to 11:59:59 PM of the latest day
-        
-//         startDate = new Date(latestDate);
-//         startDate.setHours(0, 0, 0, 0); // Set to 00:00 AM of the latest day
-        
-//         console.log('24h filter: showing entire final day from', startDate, 'to', endDate); // Debug log
-//         break;
-//       case '7d':
-//         // Show last 7 full days
-//         endDate = new Date(latestDate);
-//         endDate.setHours(23, 59, 59, 999);
-        
-//         startDate = new Date(latestDate);
-//         startDate.setDate(startDate.getDate() - 6); // 7 days including today
-//         startDate.setHours(0, 0, 0, 0);
-        
-//         console.log('7d filter: showing data from', startDate, 'to', endDate); // Debug log
-//         break;
-//       case '30d':
-//         // Show last 30 full days
-//         endDate = new Date(latestDate);
-//         endDate.setHours(23, 59, 59, 999);
-        
-//         startDate = new Date(latestDate);
-//         startDate.setDate(startDate.getDate() - 29); // 30 days including today
-//         startDate.setHours(0, 0, 0, 0);
-        
-//         console.log('30d filter: showing data from', startDate, 'to', endDate); // Debug log
-//         break;
-//       default:
-//         return processedData;
-//     }
-    
-//     // Filter data to show everything in the specified date range
-//     const filtered = processedData.filter(item => {
-//       const itemTime = item.timestamp.getTime();
-//       const startTime = startDate.getTime();
-//       const endTime = endDate.getTime();
-      
-//       return itemTime >= startTime && itemTime <= endTime;
-//     });
-    
-//     console.log(`Filtered ${processedData.length} -> ${filtered.length} data points for ${dateRange}`); // Debug log
-//     console.log('Filter range:', startDate.toLocaleString(), 'to', endDate.toLocaleString());
-    
-//     return filtered;
-//   }, [processedData, dateRange]);
-
-//   // Calculate statistics
-//   const stats = useMemo(() => {
-//     if (filteredData.length === 0) return {};
-    
-//     const validReadings = filteredData.filter(item => item[selectedMetric] != null);
-//     const values = validReadings.map(item => item[selectedMetric]);
-    
-//     if (values.length === 0) return {};
-    
-//     return {
-//       current: values[values.length - 1],
-//       average: (values.reduce((sum, val) => sum + val, 0) / values.length).toFixed(1),
-//       max: Math.max(...values),
-//       min: Math.min(...values),
-//       trend: values.length > 1 ? (values[values.length - 1] - values[0] > 0 ? 'up' : 'down') : 'stable'
-//     };
-//   }, [filteredData, selectedMetric]);
-
-//   // D3 Chart rendering
-//   useEffect(() => {
-//     if (!filteredData.length || !svgRef.current) return;
-
-//     const svg = d3.select(svgRef.current);
-//     svg.selectAll("*").remove(); // Clear previous chart
-
-//     const margin = { top: 20, right: 30, bottom: 80, left: 70 };
-//     const width = 800 - margin.left - margin.right;
-//     const height = 400 - margin.top - margin.bottom;
-
-//     const g = svg.append("g")
-//       .attr("transform", `translate(${margin.left},${margin.top})`);
-
-//     // Filter out null values for the selected metric
-//     const validData = filteredData.filter(d => d[selectedMetric] != null);
-    
-//     if (validData.length === 0) {
-//       g.append("text")
-//         .attr("x", width / 2)
-//         .attr("y", height / 2)
-//         .attr("text-anchor", "middle")
-//         .style("font-size", "16px")
-//         .style("fill", "#666")
-//         .text("No valid data to display");
-//       return;
-//     }
-
-//     console.log('Valid data for chart:', validData); // Debug log
-
-//     // Scales with better domain handling
-//     const xScale = d3.scaleTime()
-//       .domain(d3.extent(validData, d => d.timestamp))
-//       .range([0, width]);
-
-//     // More intelligent Y-scale domain
-//     const yExtent = d3.extent(validData, d => d[selectedMetric]);
-//     const yPadding = (yExtent[1] - yExtent[0]) * 0.1; // Add 10% padding
-    
-//     const yScale = d3.scaleLinear()
-//       .domain([
-//         Math.max(0, yExtent[0] - yPadding), // Don't go below 0 for most metrics
-//         yExtent[1] + yPadding
-//       ])
-//       .nice()
-//       .range([height, 0]);
-
-//     // Color scale for AQI categories
-//     const getAQIColor = (aqi) => {
-//       if (aqi <= 50) return '#00E400';
-//       if (aqi <= 100) return '#FFFF00';
-//       if (aqi <= 150) return '#FF7E00';
-//       if (aqi <= 200) return '#FF0000';
-//       if (aqi <= 300) return '#8F3F97';
-//       return '#7E0023';
-//     };
-
-//     const getMetricColor = (d) => {
-//       if (selectedMetric === 'aqi') {
-//         return getAQIColor(d[selectedMetric]);
-//       }
-//       return colors[selectedMetric];
-//     };
-
-//     const colors = {
-//       aqi: '#8884d8',
-//       temp: '#82ca9d',
-//       hum: '#ffc658',
-//       co2: '#ff7300',
-//       pm25: '#8dd1e1'
-//     };
-
-//     // Axes with better formatting
-//     const xAxis = d3.axisBottom(xScale)
-//       .tickFormat(d3.timeFormat("%m/%d %H:%M"))
-//       .ticks(Math.min(validData.length, 8)); // Limit number of ticks
-
-//     const yAxis = d3.axisLeft(yScale)
-//       .ticks(8);
-
-//     g.append("g")
-//       .attr("transform", `translate(0,${height})`)
-//       .call(xAxis)
-//       .selectAll("text")
-//       .style("text-anchor", "end")
-//       .style("font-size", "11px")
-//       .attr("dx", "-.8em")
-//       .attr("dy", ".15em")
-//       .attr("transform", "rotate(-45)");
-
-//     g.append("g")
-//       .call(yAxis)
-//       .selectAll("text")
-//       .style("font-size", "11px");
-
-//     // Add axis labels
-//     g.append("text")
-//       .attr("transform", "rotate(-90)")
-//       .attr("y", 0 - margin.left)
-//       .attr("x", 0 - (height / 2))
-//       .attr("dy", "1em")
-//       .style("text-anchor", "middle")
-//       .style("font-size", "12px")
-//       .style("fill", "#666")
-//       .text(metrics[selectedMetric].label + (metrics[selectedMetric].unit ? ` (${metrics[selectedMetric].unit})` : ''));
-
-//     g.append("text")
-//       .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
-//       .style("text-anchor", "middle")
-//       .style("font-size", "12px")
-//       .style("fill", "#666")
-//       .text("Time");
-
-//     // Add grid lines
-//     g.append("g")
-//       .attr("class", "grid")
-//       .attr("transform", `translate(0,${height})`)
-//       .call(d3.axisBottom(xScale)
-//         .tickSize(-height)
-//         .tickFormat("")
-//         .ticks(8)
-//       )
-//       .style("stroke-dasharray", "3,3")
-//       .style("opacity", 0.3);
-
-//     g.append("g")
-//       .attr("class", "grid")
-//       .call(d3.axisLeft(yScale)
-//         .tickSize(-width)
-//         .tickFormat("")
-//         .ticks(8)
-//       )
-//       .style("stroke-dasharray", "3,3")
-//       .style("opacity", 0.3);
-
-//     // Render different chart types
-//     switch (chartType) {
-//       case 'area':
-//         const area = d3.area()
-//           .x(d => xScale(d.timestamp))
-//           .y0(height)
-//           .y1(d => yScale(d[selectedMetric]))
-//           .curve(d3.curveMonotoneX);
-
-//         g.append("path")
-//           .datum(validData)
-//           .attr("fill", colors[selectedMetric])
-//           .attr("fill-opacity", 0.6)
-//           .attr("stroke", colors[selectedMetric])
-//           .attr("stroke-width", 2)
-//           .attr("d", area);
-//         break;
-
-//       case 'bar':
-//         const barWidth = Math.min(width / validData.length * 0.8, 20);
-        
-//         g.selectAll(".bar")
-//           .data(validData)
-//           .enter().append("rect")
-//           .attr("class", "bar")
-//           .attr("x", d => xScale(d.timestamp) - barWidth/2)
-//           .attr("width", barWidth)
-//           .attr("y", d => yScale(d[selectedMetric]))
-//           .attr("height", d => height - yScale(d[selectedMetric]))
-//           .attr("fill", d => getMetricColor(d))
-//           .attr("opacity", 0.8);
-//         break;
-
-//       case 'scatter':
-//         g.selectAll(".dot")
-//           .data(validData)
-//           .enter().append("circle")
-//           .attr("class", "dot")
-//           .attr("cx", d => xScale(d.timestamp))
-//           .attr("cy", d => yScale(d[selectedMetric]))
-//           .attr("r", 4)
-//           .attr("fill", d => getMetricColor(d))
-//           .attr("opacity", 0.8)
-//           .attr("stroke", "#fff")
-//           .attr("stroke-width", 1);
-//         break;
-
-//       default: // line chart
-//         const line = d3.line()
-//           .x(d => xScale(d.timestamp))
-//           .y(d => yScale(d[selectedMetric]))
-//           .curve(d3.curveMonotoneX);
-
-//         g.append("path")
-//           .datum(validData)
-//           .attr("fill", "none")
-//           .attr("stroke", colors[selectedMetric])
-//           .attr("stroke-width", 2)
-//           .attr("d", line);
-
-//         // Add dots with proper coloring
-//         g.selectAll(".dot")
-//           .data(validData)
-//           .enter().append("circle")
-//           .attr("class", "dot")
-//           .attr("cx", d => xScale(d.timestamp))
-//           .attr("cy", d => yScale(d[selectedMetric]))
-//           .attr("r", 3)
-//           .attr("fill", d => getMetricColor(d))
-//           .attr("stroke", "#fff")
-//           .attr("stroke-width", 1);
-//         break;
-//     }
-
-//     // Add tooltips
-//     const tooltip = d3.select("body").append("div")
-//       .attr("class", "d3-tooltip")
-//       .style("position", "absolute")
-//       .style("visibility", "hidden")
-//       .style("background", "rgba(0, 0, 0, 0.8)")
-//       .style("color", "white")
-//       .style("padding", "8px")
-//       .style("border-radius", "4px")
-//       .style("font-size", "12px")
-//       .style("pointer-events", "none")
-//       .style("z-index", "1000");
-
-//     g.selectAll(".dot, .bar")
-//       .on("mouseover", function(event, d) {
-//         tooltip.style("visibility", "visible")
-//           .html(`
-//             <div><strong>${metrics[selectedMetric].label}: ${d[selectedMetric]}${metrics[selectedMetric].unit}</strong></div>
-//             <div>Time: ${d.dateTime}</div>
-//             ${selectedMetric === 'aqi' ? `<div>Category: ${getAQICategory(d.aqi).category}</div>` : ''}
-//           `);
-//       })
-//       .on("mousemove", function(event) {
-//         tooltip.style("top", (event.pageY - 10) + "px")
-//           .style("left", (event.pageX + 10) + "px");
-//       })
-//       .on("mouseout", function() {
-//         tooltip.style("visibility", "hidden");
-//       });
-
-//     // Cleanup tooltip on component unmount
-//     return () => {
-//       d3.selectAll(".d3-tooltip").remove();
-//     };
-
-//   }, [filteredData, selectedMetric, chartType]);
-
-//   // Get AQI category and color
-//   const getAQICategory = (aqi) => {
-//     if (aqi <= 50) return { category: 'Good', color: '#00E400' };
-//     if (aqi <= 100) return { category: 'Moderate', color: '#FFFF00' };
-//     if (aqi <= 150) return { category: 'Unhealthy for Sensitive', color: '#FF7E00' };
-//     if (aqi <= 200) return { category: 'Unhealthy', color: '#FF0000' };
-//     if (aqi <= 300) return { category: 'Very Unhealthy', color: '#8F3F97' };
-//     return { category: 'Hazardous', color: '#7E0023' };
-//   };
-
-//   const metrics = {
-//     aqi: { label: 'Air Quality Index', unit: '', color: '#8884d8', icon: Activity },
-//     temp: { label: 'Temperature', unit: '°C', color: '#82ca9d', icon: Thermometer },
-//     hum: { label: 'Humidity', unit: '%', color: '#ffc658', icon: Droplets },
-//     co2: { label: 'CO2', unit: 'ppm', color: '#ff7300', icon: Wind },
-//     pm25: { label: 'PM2.5', unit: 'μg/m³', color: '#8dd1e1', icon: Wind }
-//   };
-
-//   const currentAQI = stats.current && selectedMetric === 'aqi' ? getAQICategory(stats.current) : null;
-
-//   return (
-//     <div style={{ 
-//       width: '100%', 
-//       maxWidth: '1200px', 
-//       margin: '0 auto', 
-//       padding: '24px', 
-//       backgroundColor: '#f9fafb', 
-//       minHeight: '100vh' 
-//     }}>
-//       <div style={{ 
-//         backgroundColor: 'white', 
-//         borderRadius: '8px', 
-//         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
-//         padding: '24px' 
-//       }}>
-//         <div style={{ 
-//           display: 'flex', 
-//           alignItems: 'center', 
-//           justifyContent: 'space-between', 
-//           marginBottom: '24px' 
-//         }}>
-//           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-//             <Activity style={{ width: '32px', height: '32px', color: '#2563eb' }} />
-//             <h1 style={{ 
-//               fontSize: '28px', 
-//               fontWeight: 'bold', 
-//               color: '#1f2937', 
-//               margin: 0 
-//             }}>Previous Charts</h1>
-//           </div>
-//           {/* {currentAQI && (
-//             <div style={{ textAlign: 'right' }}>
-//               <div style={{ fontSize: '14px', color: '#6b7280' }}>Current AQI</div>
-//               <div style={{ 
-//                 fontSize: '24px', 
-//                 fontWeight: 'bold', 
-//                 color: currentAQI.color 
-//               }}>
-//                 {stats.current}
-//               </div>
-//               <div style={{ 
-//                 fontSize: '14px', 
-//                 color: currentAQI.color 
-//               }}>
-//                 {currentAQI.category}
-//               </div>
-//             </div>
-//           )} */}
-//         </div>
-
-//         {/* Debug Info */}
-//         <div style={{ 
-//           marginBottom: '16px', 
-//           padding: '8px', 
-//           backgroundColor: '#f3f4f6', 
-//           borderRadius: '4px',
-//           fontSize: '12px',
-//           color: '#4b5563'
-//         }}>
-//           {/* <div>Total processed data points: {processedData.length}</div>
-//           <div>Filtered data points ({dateRange}): {filteredData.length}</div>
-//           <div>Valid data for selected metric: {filteredData.filter(d => d[selectedMetric] != null).length}</div>
-//           {filteredData.length > 0 && (
-//             <>
-//               <div><strong>Showing data for:</strong> {dateRange === '24h' ? 'Full Final Day' : dateRange}</div>
-//               <div>Date range: {filteredData[0].date} to {filteredData[filteredData.length - 1].date}</div>
-//               <div>Time range: {filteredData[0].time} to {filteredData[filteredData.length - 1].time}</div>
-//             </>
-//           )} */}
-//         </div>
-
-//         {/* Controls */}
-//         <div style={{ 
-//           display: 'grid', 
-//           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-//           gap: '16px', 
-//           marginBottom: '24px' 
-//         }}>
-//           {/* Metric Selection */}
-//           <div>
-//             <label style={{ 
-//               display: 'block', 
-//               fontSize: '14px', 
-//               fontWeight: '500', 
-//               color: '#374151', 
-//               marginBottom: '8px' 
-//             }}>Metric</label>
-//             <select 
-//               value={selectedMetric} 
-//               onChange={(e) => setSelectedMetric(e.target.value)}
-//               style={{
-//                 width: '100%',
-//                 padding: '8px',
-//                 border: '1px solid #d1d5db',
-//                 borderRadius: '6px',
-//                 fontSize: '14px',
-//                 backgroundColor: 'white',
-//                 cursor: 'pointer'
-//               }}
-//             >
-//               {Object.entries(metrics).map(([key, metric]) => (
-//                 <option key={key} value={key}>{metric.label}</option>
-//               ))}
-//             </select>
-//           </div>
-
-//           {/* Chart Type */}
-//           <div>
-//             <label style={{ 
-//               display: 'block', 
-//               fontSize: '14px', 
-//               fontWeight: '500', 
-//               color: '#374151', 
-//               marginBottom: '8px' 
-//             }}>Chart Type</label>
-//             <select 
-//               value={chartType} 
-//               onChange={(e) => setChartType(e.target.value)}
-//               style={{
-//                 width: '100%',
-//                 padding: '8px',
-//                 border: '1px solid #d1d5db',
-//                 borderRadius: '6px',
-//                 fontSize: '14px',
-//                 backgroundColor: 'white',
-//                 cursor: 'pointer'
-//               }}
-//             >
-//               <option value="line">Line Chart</option>
-//               <option value="area">Area Chart</option>
-//               <option value="bar">Bar Chart</option>
-//               <option value="scatter">Scatter Plot</option>
-//             </select>
-//           </div>
-
-//           {/* Date Range */}
-//           <div>
-//             <label style={{ 
-//               display: 'block', 
-//               fontSize: '14px', 
-//               fontWeight: '500', 
-//               color: '#374151', 
-//               marginBottom: '8px' 
-//             }}>Time Range</label>
-//             <select 
-//               value={dateRange} 
-//               onChange={(e) => setDateRange(e.target.value)}
-//               style={{
-//                 width: '100%',
-//                 padding: '8px',
-//                 border: '1px solid #d1d5db',
-//                 borderRadius: '6px',
-//                 fontSize: '14px',
-//                 backgroundColor: 'white',
-//                 cursor: 'pointer'
-//               }}
-//             >
-//               <option value="all">All Time</option>
-//               <option value="24h">Last 24 Hours</option>
-//               {/* <option value="7d">Last 7 Days</option> */}
-//               <option value="30d">Current Month</option>
-//             </select>
-//           </div>
-//         </div>
-
-//         {/* Statistics Cards */}
-//         {stats.current != null && (
-//           <div style={{ 
-//             display: 'grid', 
-//             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-//             gap: '16px', 
-//             marginBottom: '24px' 
-//           }}>
-//             {/* <div style={{ 
-//               backgroundColor: '#dbeafe', 
-//               padding: '16px', 
-//               borderRadius: '8px', 
-//               border: '1px solid #bfdbfe' 
-//             }}>
-//               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-//                 <div>
-//                   <div style={{ fontSize: '14px', color: '#2563eb' }}>Current</div>
-//                   <div style={{ 
-//                     fontSize: '24px', 
-//                     fontWeight: 'bold', 
-//                     color: '#1e40af' 
-//                   }}>{stats.current}{metrics[selectedMetric].unit}</div>
-//                 </div>
-//                 {React.createElement(metrics[selectedMetric].icon, { 
-//                   style: { width: '32px', height: '32px', color: '#2563eb' } 
-//                 })}
-//               </div>
-//             </div> */}
-
-//             <div style={{ 
-//               backgroundColor: '#dcfce7', 
-//               padding: '16px', 
-//               borderRadius: '8px', 
-//               border: '1px solid #bbf7d0' 
-//             }}>
-//               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-//                 <div>
-//                   <div style={{ fontSize: '14px', color: '#16a34a' }}>Average</div>
-//                   <div style={{ 
-//                     fontSize: '24px', 
-//                     fontWeight: 'bold', 
-//                     color: '#15803d' 
-//                   }}>{stats.average}{metrics[selectedMetric].unit}</div>
-//                 </div>
-//                 <TrendingUp style={{ width: '32px', height: '32px', color: '#16a34a' }} />
-//               </div>
-//             </div>
-
-//             <div style={{ 
-//               backgroundColor: '#fee2e2', 
-//               padding: '16px', 
-//               borderRadius: '8px', 
-//               border: '1px solid #fecaca' 
-//             }}>
-//               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-//                 <div>
-//                   <div style={{ fontSize: '14px', color: '#dc2626' }}>Maximum</div>
-//                   <div style={{ 
-//                     fontSize: '24px', 
-//                     fontWeight: 'bold', 
-//                     color: '#b91c1c' 
-//                   }}>{stats.max}{metrics[selectedMetric].unit}</div>
-//                 </div>
-//                 <TrendingUp style={{ width: '32px', height: '32px', color: '#dc2626' }} />
-//               </div>
-//             </div>
-
-//             <div style={{ 
-//               backgroundColor: '#fef3c7', 
-//               padding: '16px', 
-//               borderRadius: '8px', 
-//               border: '1px solid #fde68a' 
-//             }}>
-//               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-//                 <div>
-//                   <div style={{ fontSize: '14px', color: '#d97706' }}>Minimum</div>
-//                   <div style={{ 
-//                     fontSize: '24px', 
-//                     fontWeight: 'bold', 
-//                     color: '#b45309' 
-//                   }}>{stats.min}{metrics[selectedMetric].unit}</div>
-//                 </div>
-//                 <TrendingUp style={{ width: '32px', height: '32px', color: '#d97706' }} />
-//               </div>
-//             </div>
-//           </div>
-//         )}
-
-//         {/* D3 Chart */}
-//         <div style={{ 
-//           backgroundColor: 'white', 
-//           padding: '24px', 
-//           borderRadius: '8px', 
-//           border: '1px solid #e5e7eb' 
-//         }}>
-//           <h2 style={{ 
-//             fontSize: '20px', 
-//             fontWeight: '600', 
-//             marginBottom: '16px', 
-//             color: '#1f2937' 
-//           }}>
-//             {metrics[selectedMetric].label} Over Time
-//           </h2>
-//           <div style={{ width: '100%', overflowX: 'auto' }}>
-//             <svg ref={svgRef} width="800" height="400" style={{ width: '100%', height: 'auto' }}></svg>
-//           </div>
-//         </div>
-
-//         {/* Data Summary */}
-//         <div style={{ 
-//           marginTop: '24px', 
-//           backgroundColor: '#f9fafb', 
-//           padding: '16px', 
-//           borderRadius: '8px' 
-//         }}>
-//           <div style={{ 
-//             display: 'grid', 
-//             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-//             gap: '16px', 
-//             fontSize: '14px' 
-//           }}>
-//             {/* <div>
-//               <span style={{ fontWeight: '500', color: '#374151' }}>Total Readings:</span>
-//               <span style={{ marginLeft: '8px', color: '#111827' }}>{filteredData.length}</span>
-//             </div> */}
-//             <div>
-//               <span style={{ fontWeight: '500', color: '#374151' }}>Date Range:</span>
-//               <span style={{ marginLeft: '8px', color: '#111827' }}>
-//                 {filteredData.length > 0 ? 
-//                   `${filteredData[0].date} - ${filteredData[filteredData.length - 1].date}` : 
-//                   'No data'
-//                 }
-//               </span>
-//             </div>
-//             <div>
-//               <span style={{ fontWeight: '500', color: '#374151' }}>Latest Reading:</span>
-//               <span style={{ marginLeft: '8px', color: '#111827' }}>
-//                 {filteredData.length > 0 ? filteredData[filteredData.length - 1].dateTime : 'No data'}
-//               </span>
-//             </div>
-//             <div>
-//               <span style={{ fontWeight: '500', color: '#374151' }}>Trend:</span>
-//               <span style={{ 
-//                 marginLeft: '8px', 
-//                 color: stats.trend === 'up' ? '#dc2626' : stats.trend === 'down' ? '#16a34a' : '#6b7280'
-//               }}>
-//                 {stats.trend === 'up' ? '↗ Rising' : stats.trend === 'down' ? '↘ Falling' : '→ Stable'}
-//               </span>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-
-// new graph from Claude
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import * as d3 from 'd3';
 import { Calendar, Thermometer, Wind, Droplets, Activity, TrendingUp } from 'lucide-react';
@@ -756,36 +8,26 @@ const AirQualityDashboard = ({ data }) => {
   const [chartType, setChartType] = useState('line');
   const [dateRange, setDateRange] = useState('all');
   const svgRef = useRef(null);
-  const xScaleRef = useRef(null);
-  const yScaleRef = useRef(null);
 
-  // Process and flatten the nested data with better date parsing
+  // Process and flatten the nested data
   const processedData = useMemo(() => {
     const flatData = [];
-    
-    // Process date-based entries
+
     Object.keys(data).forEach(dateKey => {
       if (dateKey.includes('_') && dateKey.match(/^\d{4}_\d{1,2}_\d{1,2}$/)) {
         const dayData = data[dateKey];
-        
         Object.keys(dayData).forEach(timeKey => {
           const reading = dayData[timeKey];
-          
           if (reading && typeof reading === 'object') {
             try {
-              // Parse date and time - handle different formats
-              const [year, month, day] = dateKey.split('_').map(num => parseInt(num));
-              const [hour, minute, second] = timeKey.split('_').map(num => parseInt(num));
-              
-              const timestamp = new Date(year, month - 1, day, hour, minute, second || 0);
-              
-              // Validate the timestamp
-              if (isNaN(timestamp.getTime())) {
-                console.warn('Invalid timestamp created:', { dateKey, timeKey, year, month, day, hour, minute, second });
-                return;
-              }
+              // Parse date and time
+              const [year, month, day] = dateKey.split('_').map(Number);
+              const [hour, minute, second] = timeKey.split('_').map(Number);
 
-              // More aggressive filtering of erroneous readings
+              const timestamp = new Date(year, month - 1, day, hour, minute, second || 0);
+              if (isNaN(timestamp.getTime())) return;
+
+              // Clean invalid readings
               const cleanedReading = {
                 ...reading,
                 aqi: (reading.aqi > 500 || reading.aqi < 0) ? null : reading.aqi,
@@ -795,112 +37,90 @@ const AirQualityDashboard = ({ data }) => {
                 hum: (reading.hum > 100 || reading.hum < 0) ? null : reading.hum,
               };
 
-              const processedEntry = {
+              flatData.push({
                 timestamp,
                 date: timestamp.toLocaleDateString(),
                 time: timestamp.toLocaleTimeString(),
                 dateTime: timestamp.toLocaleString(),
                 ...cleanedReading
-              };
-              
-              flatData.push(processedEntry);
+              });
             } catch (error) {
-              console.error('Error processing data point:', error, { dateKey, timeKey, reading });
+              console.error('Error processing:', { dateKey, timeKey, reading });
             }
           }
         });
       }
     });
-    
-    // Sort by timestamp
+
     return flatData.sort((a, b) => a.timestamp - b.timestamp);
   }, [data]);
 
   // Filter data based on date range
   const filteredData = useMemo(() => {
     if (dateRange === 'all') return processedData;
-    
-    // Find the latest date in the data
-    const latestDataPoint = processedData[processedData.length - 1];
-    if (!latestDataPoint) return processedData;
-    
-    const latestDate = latestDataPoint.timestamp;
+    if (processedData.length === 0) return [];
+
+    const latestDate = processedData[processedData.length - 1].timestamp;
     let startDate, endDate;
-    
+
     switch (dateRange) {
       case '24h':
-        endDate = new Date(latestDate);
-        endDate.setHours(23, 59, 59, 999);
-        
         startDate = new Date(latestDate);
         startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(latestDate);
+        endDate.setHours(23, 59, 59, 999);
         break;
       case '7d':
+        startDate = new Date(latestDate);
+        startDate.setDate(latestDate.getDate() - 6);
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date(latestDate);
         endDate.setHours(23, 59, 59, 999);
-        
-        startDate = new Date(latestDate);
-        startDate.setDate(startDate.getDate() - 6);
-        startDate.setHours(0, 0, 0, 0);
         break;
       case '30d':
+        startDate = new Date(latestDate);
+        startDate.setDate(latestDate.getDate() - 29);
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date(latestDate);
         endDate.setHours(23, 59, 59, 999);
-        
-        startDate = new Date(latestDate);
-        startDate.setDate(startDate.getDate() - 29);
-        startDate.setHours(0, 0, 0, 0);
         break;
       default:
         return processedData;
     }
-    
-    const filtered = processedData.filter(item => {
-      const itemTime = item.timestamp.getTime();
-      const startTime = startDate.getTime();
-      const endTime = endDate.getTime();
-      
-      return itemTime >= startTime && itemTime <= endTime;
-    });
-    
-    return filtered;
+
+    return processedData.filter(item => item.timestamp >= startDate && item.timestamp <= endDate);
   }, [processedData, dateRange]);
 
   // Calculate statistics
   const stats = useMemo(() => {
     if (filteredData.length === 0) return {};
-    
     const validReadings = filteredData.filter(item => item[selectedMetric] != null);
     const values = validReadings.map(item => item[selectedMetric]);
-    
     if (values.length === 0) return {};
-    
+
     return {
       current: values[values.length - 1],
       average: (values.reduce((sum, val) => sum + val, 0) / values.length).toFixed(1),
       max: Math.max(...values),
       min: Math.min(...values),
-      trend: values.length > 1 ? (values[values.length - 1] - values[0] > 0 ? 'up' : 'down') : 'stable'
+      trend: values.length > 1 ? (values[values.length - 1] > values[0] ? 'up' : 'down') : 'stable'
     };
   }, [filteredData, selectedMetric]);
 
-  // D3 Zoomable Chart rendering
+  // D3 Chart rendering
   useEffect(() => {
     if (!filteredData.length || !svgRef.current) return;
 
     const svg = d3.select(svgRef.current);
-    svg.selectAll("*").remove(); // Clear previous chart
+    svg.selectAll("*").remove();
 
     const margin = { top: 20, right: 30, bottom: 80, left: 70 };
     const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
 
-    const g = svg.append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`);
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Filter out null values for the selected metric
     const validData = filteredData.filter(d => d[selectedMetric] != null);
-    
     if (validData.length === 0) {
       g.append("text")
         .attr("x", width / 2)
@@ -912,35 +132,47 @@ const AirQualityDashboard = ({ data }) => {
       return;
     }
 
-    // Scales
     const xScale = d3.scaleTime()
       .domain(d3.extent(validData, d => d.timestamp))
       .range([0, width]);
 
     const yExtent = d3.extent(validData, d => d[selectedMetric]);
     const yPadding = (yExtent[1] - yExtent[0]) * 0.1;
-    
     const yScale = d3.scaleLinear()
-      .domain([
-        Math.max(0, yExtent[0] - yPadding),
-        yExtent[1] + yPadding
-      ])
+      .domain([Math.max(0, yExtent[0] - yPadding), yExtent[1] + yPadding])
       .nice()
       .range([height, 0]);
 
-    // Store scales in refs for zoom functionality
-    xScaleRef.current = xScale;
-    yScaleRef.current = yScale;
+    const xAxis = d3.axisBottom(xScale)
+      .tickFormat(d3.timeFormat("%m/%d %H:%M"))
+      .ticks(8);
 
-    // Color functions
-    const getAQIColor = (aqi) => {
-      if (aqi <= 50) return '#00E400';
-      if (aqi <= 100) return '#FFFF00';
-      if (aqi <= 150) return '#FF7E00';
-      if (aqi <= 200) return '#FF0000';
-      if (aqi <= 300) return '#8F3F97';
-      return '#7E0023';
-    };
+    const yAxis = d3.axisLeft(yScale).ticks(8);
+
+    g.append("g")
+      .attr("transform", `translate(0,${height})`)
+      .call(xAxis)
+      .selectAll("text")
+      .style("text-anchor", "end")
+      .attr("dx", "-.8em")
+      .attr("dy", ".15em")
+      .attr("transform", "rotate(-45)");
+
+    g.append("g").call(yAxis);
+
+    // Grid lines
+    g.append("g")
+      .attr("class", "grid")
+      .attr("transform", `translate(0,${height})`)
+      .call(d3.axisBottom(xScale).tickSize(-height).tickFormat("").ticks(8))
+      .style("stroke-dasharray", "3,3")
+      .style("opacity", 0.3);
+
+    g.append("g")
+      .attr("class", "grid")
+      .call(d3.axisLeft(yScale).tickSize(-width).tickFormat("").ticks(8))
+      .style("stroke-dasharray", "3,3")
+      .style("opacity", 0.3);
 
     const colors = {
       aqi: '#8884d8',
@@ -950,342 +182,98 @@ const AirQualityDashboard = ({ data }) => {
       pm25: '#8dd1e1'
     };
 
-    const getMetricColor = (d) => {
-      if (selectedMetric === 'aqi') {
-        return getAQIColor(d[selectedMetric]);
-      }
-      return colors[selectedMetric];
+    const getAQIColor = (aqi) => {
+      if (aqi <= 50) return '#00E400';
+      if (aqi <= 100) return '#FFFF00';
+      if (aqi <= 150) return '#FF7E00';
+      if (aqi <= 200) return '#FF0000';
+      if (aqi <= 300) return '#8F3F97';
+      return '#7E0023';
     };
 
-    // Create axes
-    const xAxisGroup = g.append("g")
-      .attr("class", "x-axis")
-      .attr("transform", `translate(0,${height})`);
+    const getMetricColor = (d) => selectedMetric === 'aqi' ? getAQIColor(d[selectedMetric]) : colors[selectedMetric];
 
-    const yAxisGroup = g.append("g")
-      .attr("class", "y-axis");
+    switch (chartType) {
+      case 'area':
+        const area = d3.area()
+          .x(d => xScale(d.timestamp))
+          .y0(height)
+          .y1(d => yScale(d[selectedMetric]))
+          .curve(d3.curveMonotoneX);
+        g.append("path").datum(validData).attr("fill", colors[selectedMetric]).attr("fill-opacity", 0.6).attr("d", area);
+        break;
 
-    // Function to update axes with dynamic formatting based on zoom level
-    const updateAxes = (newXScale) => {
-      const extent = newXScale.domain();
-      const timeDiff = extent[1] - extent[0];
-      
-      let timeFormat;
-      let tickInterval;
-      
-      // Adjust formatting based on time range
-      if (timeDiff < 24 * 60 * 60 * 1000) { // Less than 1 day
-        timeFormat = d3.timeFormat("%H:%M");
-        tickInterval = d3.timeMinute.every(30);
-      } else if (timeDiff < 7 * 24 * 60 * 60 * 1000) { // Less than 1 week
-        timeFormat = d3.timeFormat("%m/%d %H:%M");
-        tickInterval = d3.timeHour.every(6);
-      } else if (timeDiff < 30 * 24 * 60 * 60 * 1000) { // Less than 1 month
-        timeFormat = d3.timeFormat("%m/%d");
-        tickInterval = d3.timeDay.every(1);
-      } else {
-        timeFormat = d3.timeFormat("%m/%d/%y");
-        tickInterval = d3.timeDay.every(7);
-      }
+      case 'bar':
+        const barWidth = Math.min(width / validData.length * 0.8, 20);
+        g.selectAll(".bar")
+          .data(validData)
+          .enter().append("rect")
+          .attr("x", d => xScale(d.timestamp) - barWidth / 2)
+          .attr("width", barWidth)
+          .attr("y", d => yScale(d[selectedMetric]))
+          .attr("height", d => height - yScale(d[selectedMetric]))
+          .attr("fill", d => getMetricColor(d))
+          .attr("opacity", 0.8);
+        break;
 
-      const xAxis = d3.axisBottom(newXScale)
-        .tickFormat(timeFormat)
-        .ticks(tickInterval || 8);
+      case 'scatter':
+        g.selectAll(".dot")
+          .data(validData)
+          .enter().append("circle")
+          .attr("cx", d => xScale(d.timestamp))
+          .attr("cy", d => yScale(d[selectedMetric]))
+          .attr("r", 4)
+          .attr("fill", d => getMetricColor(d))
+          .attr("opacity", 0.8);
+        break;
 
-      xAxisGroup
-        .transition()
-        .duration(300)
-        .call(xAxis)
-        .selectAll("text")
-        .style("text-anchor", "end")
-        .style("font-size", "11px")
-        .attr("dx", "-.8em")
-        .attr("dy", ".15em")
-        .attr("transform", "rotate(-45)");
+      default:
+        const line = d3.line()
+          .x(d => xScale(d.timestamp))
+          .y(d => yScale(d[selectedMetric]))
+          .curve(d3.curveMonotoneX);
+        g.append("path")
+          .datum(validData)
+          .attr("fill", "none")
+          .attr("stroke", colors[selectedMetric])
+          .attr("stroke-width", 2)
+          .attr("d", line);
 
-      const yAxis = d3.axisLeft(yScale).ticks(8);
-      yAxisGroup
-        .transition()
-        .duration(300)
-        .call(yAxis)
-        .selectAll("text")
-        .style("font-size", "11px");
-    };
+        g.selectAll(".dot")
+          .data(validData)
+          .enter().append("circle")
+          .attr("cx", d => xScale(d.timestamp))
+          .attr("cy", d => yScale(d[selectedMetric]))
+          .attr("r", 3)
+          .attr("fill", d => getMetricColor(d));
+        break;
+    }
 
-    // Add grid lines
-    const gridGroup = g.append("g").attr("class", "grid");
-    
-    const updateGrid = (newXScale) => {
-      gridGroup.selectAll("*").remove();
-      
-      // Vertical grid lines
-      gridGroup.append("g")
-        .attr("class", "grid-x")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(newXScale)
-          .tickSize(-height)
-          .tickFormat("")
-          .ticks(8)
-        )
-        .style("stroke-dasharray", "3,3")
-        .style("opacity", 0.3);
+    // Tooltip
+    const tooltip = d3.select("body").selectAll(".d3-tooltip").data([null]).join("div")
+      .attr("class", "d3-tooltip")
+      .style("position", "absolute")
+      .style("visibility", "hidden")
+      .style("background", "rgba(0,0,0,0.8)")
+      .style("color", "white")
+      .style("padding", "8px")
+      .style("border-radius", "4px")
+      .style("font-size", "12px");
 
-      // Horizontal grid lines
-      gridGroup.append("g")
-        .attr("class", "grid-y")
-        .call(d3.axisLeft(yScale)
-          .tickSize(-width)
-          .tickFormat("")
-          .ticks(8)
-        )
-        .style("stroke-dasharray", "3,3")
-        .style("opacity", 0.3);
-    };
+    g.selectAll(".dot, rect")
+      .on("mouseover", (event, d) => {
+        tooltip.style("visibility", "visible")
+          .html(`<strong>${metrics[selectedMetric].label}: ${d[selectedMetric]}${metrics[selectedMetric].unit}</strong><br/>
+                 Time: ${d.dateTime}`);
+      })
+      .on("mousemove", (event) => {
+        tooltip.style("top", (event.pageY - 10) + "px")
+               .style("left", (event.pageX + 10) + "px");
+      })
+      .on("mouseout", () => tooltip.style("visibility", "hidden"));
 
-    // Chart content group
-    const chartGroup = g.append("g").attr("class", "chart-content");
-
-    // Function to update chart content
-    const updateChart = (newXScale) => {
-      chartGroup.selectAll("*").remove();
-
-      // Filter data based on current zoom level
-      const [x0, x1] = newXScale.domain();
-      const visibleData = validData.filter(d => d.timestamp >= x0 && d.timestamp <= x1);
-
-      if (visibleData.length === 0) return;
-
-      // Tooltip
-      const tooltip = d3.select("body").selectAll(".d3-tooltip")
-        .data([null])
-        .join("div")
-        .attr("class", "d3-tooltip")
-        .style("position", "absolute")
-        .style("visibility", "hidden")
-        .style("background", "rgba(0, 0, 0, 0.8)")
-        .style("color", "white")
-        .style("padding", "8px")
-        .style("border-radius", "4px")
-        .style("font-size", "12px")
-        .style("pointer-events", "none")
-        .style("z-index", "1000");
-
-      // Render different chart types
-      switch (chartType) {
-        case 'area':
-          const area = d3.area()
-            .x(d => newXScale(d.timestamp))
-            .y0(height)
-            .y1(d => yScale(d[selectedMetric]))
-            .curve(d3.curveMonotoneX);
-
-          chartGroup.append("path")
-            .datum(visibleData)
-            .attr("fill", colors[selectedMetric])
-            .attr("fill-opacity", 0.6)
-            .attr("stroke", colors[selectedMetric])
-            .attr("stroke-width", 2)
-            .attr("d", area);
-          break;
-
-        case 'bar':
-          const barWidth = Math.min(width / visibleData.length * 0.8, 20);
-          
-          chartGroup.selectAll(".bar")
-            .data(visibleData)
-            .enter().append("rect")
-            .attr("class", "bar")
-            .attr("x", d => newXScale(d.timestamp) - barWidth/2)
-            .attr("width", barWidth)
-            .attr("y", d => yScale(d[selectedMetric]))
-            .attr("height", d => height - yScale(d[selectedMetric]))
-            .attr("fill", d => getMetricColor(d))
-            .attr("opacity", 0.8)
-            .on("mouseover", function(event, d) {
-              tooltip.style("visibility", "visible")
-                .html(`
-                  <div><strong>${metrics[selectedMetric].label}: ${d[selectedMetric]}${metrics[selectedMetric].unit}</strong></div>
-                  <div>Time: ${d.dateTime}</div>
-                  ${selectedMetric === 'aqi' ? `<div>Category: ${getAQICategory(d.aqi).category}</div>` : ''}
-                `);
-            })
-            .on("mousemove", function(event) {
-              tooltip.style("top", (event.pageY - 10) + "px")
-                .style("left", (event.pageX + 10) + "px");
-            })
-            .on("mouseout", function() {
-              tooltip.style("visibility", "hidden");
-            });
-          break;
-
-        case 'scatter':
-          chartGroup.selectAll(".dot")
-            .data(visibleData)
-            .enter().append("circle")
-            .attr("class", "dot")
-            .attr("cx", d => newXScale(d.timestamp))
-            .attr("cy", d => yScale(d[selectedMetric]))
-            .attr("r", 4)
-            .attr("fill", d => getMetricColor(d))
-            .attr("opacity", 0.8)
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 1)
-            .on("mouseover", function(event, d) {
-              tooltip.style("visibility", "visible")
-                .html(`
-                  <div><strong>${metrics[selectedMetric].label}: ${d[selectedMetric]}${metrics[selectedMetric].unit}</strong></div>
-                  <div>Time: ${d.dateTime}</div>
-                  ${selectedMetric === 'aqi' ? `<div>Category: ${getAQICategory(d.aqi).category}</div>` : ''}
-                `);
-            })
-            .on("mousemove", function(event) {
-              tooltip.style("top", (event.pageY - 10) + "px")
-                .style("left", (event.pageX + 10) + "px");
-            })
-            .on("mouseout", function() {
-              tooltip.style("visibility", "hidden");
-            });
-          break;
-
-        default: // line chart
-          const line = d3.line()
-            .x(d => newXScale(d.timestamp))
-            .y(d => yScale(d[selectedMetric]))
-            .curve(d3.curveMonotoneX);
-
-          chartGroup.append("path")
-            .datum(visibleData)
-            .attr("fill", "none")
-            .attr("stroke", colors[selectedMetric])
-            .attr("stroke-width", 2)
-            .attr("d", line);
-
-          // Add dots
-          chartGroup.selectAll(".dot")
-            .data(visibleData)
-            .enter().append("circle")
-            .attr("class", "dot")
-            .attr("cx", d => newXScale(d.timestamp))
-            .attr("cy", d => yScale(d[selectedMetric]))
-            .attr("r", 3)
-            .attr("fill", d => getMetricColor(d))
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 1)
-            .on("mouseover", function(event, d) {
-              tooltip.style("visibility", "visible")
-                .html(`
-                  <div><strong>${metrics[selectedMetric].label}: ${d[selectedMetric]}${metrics[selectedMetric].unit}</strong></div>
-                  <div>Time: ${d.dateTime}</div>
-                  ${selectedMetric === 'aqi' ? `<div>Category: ${getAQICategory(d.aqi).category}</div>` : ''}
-                `);
-            })
-            .on("mousemove", function(event) {
-              tooltip.style("top", (event.pageY - 10) + "px")
-                .style("left", (event.pageX + 10) + "px");
-            })
-            .on("mouseout", function() {
-              tooltip.style("visibility", "hidden");
-            });
-          break;
-      }
-    };
-
-    // Initial render
-    updateAxes(xScale);
-    updateGrid(xScale);
-    updateChart(xScale);
-
-    // Add axis labels
-    g.append("text")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 0 - margin.left)
-      .attr("x", 0 - (height / 2))
-      .attr("dy", "1em")
-      .style("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("fill", "#666")
-      .text(metrics[selectedMetric].label + (metrics[selectedMetric].unit ? ` (${metrics[selectedMetric].unit})` : ''));
-
-    g.append("text")
-      .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
-      .style("text-anchor", "middle")
-      .style("font-size", "12px")
-      .style("fill", "#666")
-      .text("Time");
-
-    // Zoom behavior
-    const zoom = d3.zoom()
-      .scaleExtent([1, 50])
-      .extent([[0, 0], [width, height]])
-      .on("zoom", function(event) {
-        const newXScale = event.transform.rescaleX(xScale);
-        
-        // Update axes and grid with smooth transitions
-        updateAxes(newXScale);
-        updateGrid(newXScale);
-        updateChart(newXScale);
-      });
-
-    // Add zoom rectangle
-    const zoomRect = svg.append("rect")
-      .attr("width", width)
-      .attr("height", height)
-      .attr("transform", `translate(${margin.left},${margin.top})`)
-      .style("fill", "none")
-      .style("pointer-events", "all")
-      .call(zoom);
-
-    // Add reset zoom button
-    const resetButton = svg.append("g")
-      .attr("class", "reset-button")
-      .attr("transform", `translate(${width + margin.left - 80}, ${margin.top + 10})`)
-      .style("cursor", "pointer");
-
-    resetButton.append("rect")
-      .attr("width", 70)
-      .attr("height", 25)
-      .attr("rx", 3)
-      .style("fill", "#f3f4f6")
-      .style("stroke", "#d1d5db");
-
-    resetButton.append("text")
-      .attr("x", 35)
-      .attr("y", 17)
-      .style("text-anchor", "middle")
-      .style("font-size", "11px")
-      .style("fill", "#374151")
-      .text("Reset Zoom");
-
-    resetButton.on("click", function() {
-      svg.transition()
-        .duration(750)
-        .call(zoom.transform, d3.zoomIdentity);
-    });
-
-    // Get AQI category and color
-    const getAQICategory = (aqi) => {
-      if (aqi <= 50) return { category: 'Good', color: '#00E400' };
-      if (aqi <= 100) return { category: 'Moderate', color: '#FFFF00' };
-      if (aqi <= 150) return { category: 'Unhealthy for Sensitive', color: '#FF7E00' };
-      if (aqi <= 200) return { category: 'Unhealthy', color: '#FF0000' };
-      if (aqi <= 300) return { category: 'Very Unhealthy', color: '#8F3F97' };
-      return { category: 'Hazardous', color: '#7E0023' };
-    };
-
-    // Cleanup
-    return () => {
-      d3.selectAll(".d3-tooltip").remove();
-    };
-
+    return () => tooltip.remove();
   }, [filteredData, selectedMetric, chartType]);
-
-  const metrics = {
-    aqi: { label: 'Air Quality Index', unit: '', color: '#8884d8', icon: Activity },
-    temp: { label: 'Temperature', unit: '°C', color: '#82ca9d', icon: Thermometer },
-    hum: { label: 'Humidity', unit: '%', color: '#ffc658', icon: Droplets },
-    co2: { label: 'CO2', unit: 'ppm', color: '#ff7300', icon: Wind },
-    pm25: { label: 'PM2.5', unit: 'μg/m³', color: '#8dd1e1', icon: Wind }
-  };
 
   const getAQICategory = (aqi) => {
     if (aqi <= 50) return { category: 'Good', color: '#00E400' };
@@ -1296,271 +284,93 @@ const AirQualityDashboard = ({ data }) => {
     return { category: 'Hazardous', color: '#7E0023' };
   };
 
+  const metrics = {
+    aqi: { label: 'Air Quality Index', unit: '', icon: Activity },
+    temp: { label: 'Temperature', unit: '°C', icon: Thermometer },
+    hum: { label: 'Humidity', unit: '%', icon: Droplets },
+    co2: { label: 'CO2', unit: 'ppm', icon: Wind },
+    pm25: { label: 'PM2.5', unit: 'μg/m³', icon: Wind }
+  };
+
   const currentAQI = stats.current && selectedMetric === 'aqi' ? getAQICategory(stats.current) : null;
 
   return (
-    <div style={{ 
-      width: '100%', 
-      maxWidth: '1200px', 
-      margin: '0 auto', 
-      padding: '24px', 
-      backgroundColor: '#f9fafb', 
-      minHeight: '100vh' 
-    }}>
-      <div style={{ 
-        backgroundColor: 'white', 
-        borderRadius: '8px', 
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', 
-        padding: '24px' 
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          marginBottom: '24px' 
-        }}>
+    <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', padding: '24px', backgroundColor: '#f9fafb', minHeight: '100vh' }}>
+      <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', padding: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <Activity style={{ width: '32px', height: '32px', color: '#2563eb' }} />
-            <h1 style={{ 
-              fontSize: '28px', 
-              fontWeight: 'bold', 
-              color: '#1f2937', 
-              margin: 0 
-            }}>Previous Charts</h1>
+            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', margin: 0 }}>Previous Data</h1>
           </div>
         </div>
 
         {/* Controls */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '16px', 
-          marginBottom: '24px' 
-        }}>
-          {/* Metric Selection */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
           <div>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '500', 
-              color: '#374151', 
-              marginBottom: '8px' 
-            }}>Metric</label>
-            <select 
-              value={selectedMetric} 
-              onChange={(e) => setSelectedMetric(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {Object.entries(metrics).map(([key, metric]) => (
-                <option key={key} value={key}>{metric.label}</option>
-              ))}
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Metric</label>
+            <select value={selectedMetric} onChange={(e) => setSelectedMetric(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
+              {Object.entries(metrics).map(([key, metric]) => <option key={key} value={key}>{metric.label}</option>)}
             </select>
           </div>
-
-          {/* Chart Type */}
           <div>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '500', 
-              color: '#374151', 
-              marginBottom: '8px' 
-            }}>Chart Type</label>
-            <select 
-              value={chartType} 
-              onChange={(e) => setChartType(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Chart Type</label>
+            <select value={chartType} onChange={(e) => setChartType(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
               <option value="line">Line Chart</option>
               <option value="area">Area Chart</option>
               <option value="bar">Bar Chart</option>
               <option value="scatter">Scatter Plot</option>
             </select>
           </div>
-
-          {/* Date Range */}
           <div>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '500', 
-              color: '#374151', 
-              marginBottom: '8px' 
-            }}>Time Range</label>
-            <select 
-              value={dateRange} 
-              onChange={(e) => setDateRange(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>Time Range</label>
+            <select value={dateRange} onChange={(e) => setDateRange(e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
               <option value="all">All Time</option>
               <option value="24h">Last 24 Hours</option>
+              {/* <option value="7d">Last 7 Days</option> */}
               <option value="30d">Current Month</option>
             </select>
           </div>
         </div>
 
-        {/* Statistics Cards */}
+        {/* Stats Cards */}
         {stats.current != null && (
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '16px', 
-            marginBottom: '24px' 
-          }}>
-            <div style={{ 
-              backgroundColor: '#dcfce7', 
-              padding: '16px', 
-              borderRadius: '8px', 
-              border: '1px solid #bbf7d0' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#16a34a' }}>Average</div>
-                  <div style={{ 
-                    fontSize: '24px', 
-                    fontWeight: 'bold', 
-                    color: '#15803d' 
-                  }}>{stats.average}{metrics[selectedMetric].unit}</div>
-                </div>
-                <TrendingUp style={{ width: '32px', height: '32px', color: '#16a34a' }} />
-              </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ backgroundColor: '#dcfce7', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+              {/* <div style={{ fontSize: '14px', color: '#16a34a' }}>Current</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>{stats.current}{metrics[selectedMetric].unit}</div> */}
             </div>
-
-            <div style={{ 
-              backgroundColor: '#fee2e2', 
-              padding: '16px', 
-              borderRadius: '8px', 
-              border: '1px solid #fecaca' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#dc2626' }}>Maximum</div>
-                  <div style={{ 
-                    fontSize: '24px', 
-                    fontWeight: 'bold', 
-                    color: '#b91c1c' 
-                  }}>{stats.max}{metrics[selectedMetric].unit}</div>
-                </div>
-                <TrendingUp style={{ width: '32px', height: '32px', color: '#dc2626' }} />
-              </div>
+            <div style={{ backgroundColor: '#dbeafe', padding: '16px', borderRadius: '8px', border: '1px solid #93c5fd' }}>
+              <div style={{ fontSize: '14px', color: '#2563eb' }}>Average</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1d4ed8' }}>{stats.average}{metrics[selectedMetric].unit}</div>
             </div>
-
-            <div style={{ 
-              backgroundColor: '#fef3c7', 
-              padding: '16px', 
-              borderRadius: '8px', 
-              border: '1px solid #fde68a' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontSize: '14px', color: '#d97706' }}>Minimum</div>
-                  <div style={{ 
-                    fontSize: '24px', 
-                    fontWeight: 'bold', 
-                    color: '#b45309' 
-                  }}>{stats.min}{metrics[selectedMetric].unit}</div>
-                </div>
-                <TrendingUp style={{ width: '32px', height: '32px', color: '#d97706' }} />
-              </div>
+            <div style={{ backgroundColor: '#fee2e2', padding: '16px', borderRadius: '8px', border: '1px solid #fecaca' }}>
+              <div style={{ fontSize: '14px', color: '#dc2626' }}>Maximum</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#b91c1c' }}>{stats.max}{metrics[selectedMetric].unit}</div>
+            </div>
+            <div style={{ backgroundColor: '#fef3c7', padding: '16px', borderRadius: '8px', border: '1px solid #fde68a' }}>
+              <div style={{ fontSize: '14px', color: '#d97706' }}>Minimum</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#b45309' }}>{stats.min}{metrics[selectedMetric].unit}</div>
             </div>
           </div>
         )}
 
-        {/* Interactive Chart */}
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '24px', 
-          borderRadius: '8px', 
-          border: '1px solid #e5e7eb' 
-        }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center', 
-            marginBottom: '16px' 
-          }}>
-            <h2 style={{ 
-              fontSize: '20px', 
-              fontWeight: '600', 
-              color: '#1f2937',
-              margin: 0 
-            }}>
-              {metrics[selectedMetric].label} Over Time
-            </h2>
-            <div style={{ 
-              fontSize: '12px', 
-              color: '#6b7280', 
-              fontStyle: 'italic' 
-            }}>
-              Drag to pan • Scroll to zoom • Click Reset Zoom to return
-            </div>
-          </div>
+        {/* Chart */}
+        <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+            {metrics[selectedMetric].label} Over Time
+          </h2>
           <div style={{ width: '100%', overflowX: 'auto' }}>
             <svg ref={svgRef} width="800" height="400" style={{ width: '100%', height: 'auto' }}></svg>
           </div>
         </div>
 
-        {/* Data Summary */}
-        <div style={{ 
-          marginTop: '24px', 
-          backgroundColor: '#f9fafb', 
-          padding: '16px', 
-          borderRadius: '8px' 
-        }}>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '16px', 
-            fontSize: '14px' 
-          }}>
-            <div>
-              <span style={{ fontWeight: '500', color: '#374151' }}>Date Range:</span>
-              <span style={{ marginLeft: '8px', color: '#111827' }}>
-                {filteredData.length > 0 ? 
-                  `${filteredData[0].date} - ${filteredData[filteredData.length - 1].date}` : 
-                  'No data'
-                }
-              </span>
-            </div>
-            <div>
-              <span style={{ fontWeight: '500', color: '#374151' }}>Latest Reading:</span>
-              <span style={{ marginLeft: '8px', color: '#111827' }}>
-                {filteredData.length > 0 ? filteredData[filteredData.length - 1].dateTime : 'No data'}
-              </span>
-            </div>
-            <div>
-              <span style={{ fontWeight: '500', color: '#374151' }}>Trend:</span>
-              <span style={{ 
-                marginLeft: '8px', 
-                color: stats.trend === 'up' ? '#dc2626' : stats.trend === 'down' ? '#16a34a' : '#6b7280'
-              }}>
-                {stats.trend === 'up' ? '↗ Rising' : stats.trend === 'down' ? '↘ Falling' : '→ Stable'}
-              </span>
-            </div>
+        {/* Summary */}
+        <div style={{ marginTop: '24px', backgroundColor: '#f9fafb', padding: '16px', borderRadius: '8px', fontSize: '14px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            {/* <div><span style={{ fontWeight: '500' }}>Date Range:</span> {filteredData.length ? `${filteredData[0].date} - ${filteredData[filteredData.length - 1].date}` : 'No data'}</div> */}
+            <div><span style={{ fontWeight: '500' }}>Latest Reading:</span> {filteredData.length ? filteredData[filteredData.length - 1].dateTime : 'No data'}</div>
+            {/* <div><span style={{ fontWeight: '500' }}>Data Points:</span> {filteredData.length}</div> */}
+            <div><span style={{ fontWeight: '500' }}>Trend:</span> {stats.trend === 'up' ? '↗ Rising' : stats.trend === 'down' ? '↘ Falling' : '→ Stable'}</div>
           </div>
         </div>
       </div>
@@ -1568,15 +378,9 @@ const AirQualityDashboard = ({ data }) => {
   );
 };
 
-// Example usage component with sample data
+// ✅ Full reconstructed data from your PDF (example)
+const fullAirQualityData = {
 
-
-
-// Example usage component with sample data
-const App = () => {
-  // Extended sample data for demonstration
-  const airQualityData = 
-  {
   "2025_08_16": {
     "23_57_27": {
       "aqi": 64,
@@ -5183,7 +3987,1964 @@ const App = () => {
       "voc": 0
     }
   },
-
+  "2025_08_19": {
+    "00_00_14": {
+      "aqi": 53,
+      "co2": 439,
+      "createdAt": "2025_08_19_00_00_14",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 31.4375,
+      "voc": 0
+    },
+    "00_02_20": {
+      "aqi": 52,
+      "co2": 435,
+      "createdAt": "2025_08_19_00_02_20",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 3,
+      "temp": 31.125,
+      "voc": 0
+    },
+    "00_04_23": {
+      "aqi": 51,
+      "co2": 418,
+      "createdAt": "2025_08_19_00_04_23",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 2,
+      "temp": 30.875,
+      "voc": 0
+    },
+    "00_06_29": {
+      "aqi": 52,
+      "co2": 430,
+      "createdAt": "2025_08_19_00_06_29",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 2,
+      "temp": 31.0625,
+      "voc": 0
+    },
+    "00_08_32": {
+      "aqi": 53,
+      "co2": 436,
+      "createdAt": "2025_08_19_00_08_32",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 3,
+      "temp": 31.5625,
+      "voc": 0
+    },
+    "00_10_38": {
+      "aqi": 51,
+      "co2": 418,
+      "createdAt": "2025_08_19_00_10_38",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 3,
+      "temp": 31.1875,
+      "voc": 0
+    },
+    "00_12_41": {
+      "aqi": 53,
+      "co2": 441,
+      "createdAt": "2025_08_19_00_12_41",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 3,
+      "temp": 31.9375,
+      "voc": 0
+    },
+    "00_14_48": {
+      "aqi": 53,
+      "co2": 443,
+      "createdAt": "2025_08_19_00_14_48",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 3,
+      "temp": 31.375,
+      "voc": 0
+    },
+    "01_28_04": {
+      "aqi": 99,
+      "co2": 510,
+      "createdAt": "2025_08_19_01_28_04",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 42,
+      "pm25": 35,
+      "temp": 32,
+      "voc": 0
+    },
+    "01_30_07": {
+      "aqi": 97,
+      "co2": 536,
+      "createdAt": "2025_08_19_01_30_07",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 42,
+      "pm25": 34,
+      "temp": 31.9375,
+      "voc": 0
+    },
+    "01_32_10": {
+      "aqi": 97,
+      "co2": 518,
+      "createdAt": "2025_08_19_01_32_10",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 42,
+      "pm25": 34,
+      "temp": 31.9375,
+      "voc": 0
+    },
+    "01_34_16": {
+      "aqi": 102,
+      "co2": 560,
+      "createdAt": "2025_08_19_01_34_16",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 26,
+      "pm10": 45,
+      "pm25": 36,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "01_36_20": {
+      "aqi": 102,
+      "co2": 529,
+      "createdAt": "2025_08_19_01_36_20",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 26,
+      "pm10": 44,
+      "pm25": 36,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "01_38_28": {
+      "aqi": 102,
+      "co2": 522,
+      "createdAt": "2025_08_19_01_38_28",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 25,
+      "pm10": 44,
+      "pm25": 36,
+      "temp": 32.375,
+      "voc": 0
+    },
+    "01_40_32": {
+      "aqi": 107,
+      "co2": 487,
+      "createdAt": "2025_08_19_01_40_32",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 27,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 31.8125,
+      "voc": 0
+    },
+    "01_42_40": {
+      "aqi": 107,
+      "co2": 528,
+      "createdAt": "2025_08_19_01_42_40",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 27,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 31.625,
+      "voc": 0
+    },
+    "01_44_44": {
+      "aqi": 107,
+      "co2": 510,
+      "createdAt": "2025_08_19_01_44_44",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 27,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 31.625,
+      "voc": 0
+    },
+    "01_46_51": {
+      "aqi": 107,
+      "co2": 514,
+      "createdAt": "2025_08_19_01_46_51",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 25,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 31.875,
+      "voc": 0
+    },
+    "01_48_55": {
+      "aqi": 107,
+      "co2": 521,
+      "createdAt": "2025_08_19_01_48_55",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 25,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 31.8125,
+      "voc": 0
+    },
+    "01_51_03": {
+      "aqi": 107,
+      "co2": 531,
+      "createdAt": "2025_08_19_01_51_03",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 25,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "01_53_07": {
+      "aqi": 107,
+      "co2": 552,
+      "createdAt": "2025_08_19_01_53_07",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 25,
+      "pm10": 47,
+      "pm25": 38,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "01_55_15": {
+      "aqi": 104,
+      "co2": 553,
+      "createdAt": "2025_08_19_01_55_15",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 46,
+      "pm25": 37,
+      "temp": 32.625,
+      "voc": 0
+    },
+    "01_57_20": {
+      "aqi": 104,
+      "co2": 564,
+      "createdAt": "2025_08_19_01_57_20",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 46,
+      "pm25": 37,
+      "temp": 32.0625,
+      "voc": 0
+    },
+    "01_59_28": {
+      "aqi": 104,
+      "co2": 569,
+      "createdAt": "2025_08_19_01_59_28",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 46,
+      "pm25": 37,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "02_01_32": {
+      "aqi": 104,
+      "co2": 572,
+      "createdAt": "2025_08_19_02_01_32",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 46,
+      "pm25": 37,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "02_03_39": {
+      "aqi": 104,
+      "co2": 586,
+      "createdAt": "2025_08_19_02_03_39",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 24,
+      "pm10": 46,
+      "pm25": 37,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "02_05_43": {
+      "aqi": 126,
+      "co2": 582,
+      "createdAt": "2025_08_19_02_05_43",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "02_07_51": {
+      "aqi": 126,
+      "co2": 591,
+      "createdAt": "2025_08_19_02_07_51",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "02_09_55": {
+      "aqi": 126,
+      "co2": 583,
+      "createdAt": "2025_08_19_02_09_55",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "02_12_03": {
+      "aqi": 126,
+      "co2": 595,
+      "createdAt": "2025_08_19_02_12_03",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "02_14_07": {
+      "aqi": 126,
+      "co2": 587,
+      "createdAt": "2025_08_19_02_14_07",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "02_16_15": {
+      "aqi": 126,
+      "co2": 595,
+      "createdAt": "2025_08_19_02_16_15",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.375,
+      "voc": 0
+    },
+    "02_18_19": {
+      "aqi": 126,
+      "co2": 590,
+      "createdAt": "2025_08_19_02_18_19",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.9375,
+      "voc": 0
+    },
+    "02_20_27": {
+      "aqi": 126,
+      "co2": 555,
+      "createdAt": "2025_08_19_02_20_27",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 30,
+      "pm10": 58,
+      "pm25": 46,
+      "temp": 32.8125,
+      "voc": 0
+    },
+    "02_55_39": {
+      "aqi": 153,
+      "co2": 524,
+      "createdAt": "2025_08_19_02_55_39",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 47,
+      "pm10": 73,
+      "pm25": 61,
+      "temp": 33.1875,
+      "voc": 0
+    },
+    "02_57_42": {
+      "aqi": 153,
+      "co2": 514,
+      "createdAt": "2025_08_19_02_57_42",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 47,
+      "pm10": 73,
+      "pm25": 61,
+      "temp": 33.0625,
+      "voc": 0
+    },
+    "02_59_46": {
+      "aqi": 154,
+      "co2": 526,
+      "createdAt": "2025_08_19_02_59_46",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 46,
+      "pm10": 72,
+      "pm25": 62,
+      "temp": 33.1875,
+      "voc": 0
+    },
+    "03_01_54": {
+      "aqi": 157,
+      "co2": 524,
+      "createdAt": "2025_08_19_03_01_54",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 51,
+      "pm10": 80,
+      "pm25": 68,
+      "temp": 32.5625,
+      "voc": 0
+    },
+    "03_03_58": {
+      "aqi": 157,
+      "co2": 503,
+      "createdAt": "2025_08_19_03_03_58",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 51,
+      "pm10": 79,
+      "pm25": 68,
+      "temp": 32.5625,
+      "voc": 0
+    },
+    "03_06_05": {
+      "aqi": 157,
+      "co2": 506,
+      "createdAt": "2025_08_19_03_06_05",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 50,
+      "pm10": 79,
+      "pm25": 68,
+      "temp": 32.875,
+      "voc": 0
+    },
+    "03_08_09": {
+      "aqi": 159,
+      "co2": 512,
+      "createdAt": "2025_08_19_03_08_09",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 53,
+      "pm10": 83,
+      "pm25": 72,
+      "temp": 32.9375,
+      "voc": 0
+    },
+    "03_10_17": {
+      "aqi": 159,
+      "co2": 508,
+      "createdAt": "2025_08_19_03_10_17",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 52,
+      "pm10": 82,
+      "pm25": 72,
+      "temp": 33.125,
+      "voc": 0
+    },
+    "03_12_21": {
+      "aqi": 159,
+      "co2": 490,
+      "createdAt": "2025_08_19_03_12_21",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 52,
+      "pm10": 82,
+      "pm25": 72,
+      "temp": 32.875,
+      "voc": 0
+    },
+    "03_14_28": {
+      "aqi": 117,
+      "co2": 497,
+      "createdAt": "2025_08_19_03_14_28",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 28,
+      "pm10": 52,
+      "pm25": 42,
+      "temp": 32.6875,
+      "voc": 0
+    },
+    "03_16_32": {
+      "aqi": 117,
+      "co2": 502,
+      "createdAt": "2025_08_19_03_16_32",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 28,
+      "pm10": 52,
+      "pm25": 42,
+      "temp": 32.375,
+      "voc": 0
+    },
+    "03_18_40": {
+      "aqi": 119,
+      "co2": 524,
+      "createdAt": "2025_08_19_03_18_40",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 53,
+      "pm25": 43,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "03_20_44": {
+      "aqi": 119,
+      "co2": 539,
+      "createdAt": "2025_08_19_03_20_44",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 53,
+      "pm25": 43,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "03_22_52": {
+      "aqi": 119,
+      "co2": 578,
+      "createdAt": "2025_08_19_03_22_52",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 53,
+      "pm25": 43,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "03_24_56": {
+      "aqi": 119,
+      "co2": 535,
+      "createdAt": "2025_08_19_03_24_56",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 53,
+      "pm25": 43,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "03_27_04": {
+      "aqi": 119,
+      "co2": 536,
+      "createdAt": "2025_08_19_03_27_04",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 52,
+      "pm25": 43,
+      "temp": 32.625,
+      "voc": 0
+    },
+    "03_29_08": {
+      "aqi": 117,
+      "co2": 547,
+      "createdAt": "2025_08_19_03_29_08",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 52,
+      "pm25": 42,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "03_31_15": {
+      "aqi": 117,
+      "co2": 547,
+      "createdAt": "2025_08_19_03_31_15",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 29,
+      "pm10": 52,
+      "pm25": 42,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "03_33_19": {
+      "aqi": 144,
+      "co2": 551,
+      "createdAt": "2025_08_19_03_33_19",
+      "hum": 6322.7002,
+      "no2": 0,
+      "pm1": 35,
+      "pm10": 67,
+      "pm25": 53,
+      "temp": 32.9375,
+      "voc": 0
+    },
+    "03_35_27": {
+      "aqi": 144,
+      "co2": 542,
+      "createdAt": "2025_08_19_03_35_27",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 35,
+      "pm10": 67,
+      "pm25": 53,
+      "temp": 32.8125,
+      "voc": 0
+    },
+    "03_37_31": {
+      "aqi": 146,
+      "co2": 542,
+      "createdAt": "2025_08_19_03_37_31",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 68,
+      "pm25": 54,
+      "temp": 32.9375,
+      "voc": 0
+    },
+    "03_39_38": {
+      "aqi": 146,
+      "co2": 543,
+      "createdAt": "2025_08_19_03_39_38",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 68,
+      "pm25": 54,
+      "temp": 32.875,
+      "voc": 0
+    },
+    "03_41_42": {
+      "aqi": 146,
+      "co2": 549,
+      "createdAt": "2025_08_19_03_41_42",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 69,
+      "pm25": 54,
+      "temp": 32.625,
+      "voc": 0
+    },
+    "03_43_50": {
+      "aqi": 146,
+      "co2": 565,
+      "createdAt": "2025_08_19_03_43_50",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 69,
+      "pm25": 54,
+      "temp": 33.125,
+      "voc": 0
+    },
+    "03_45_54": {
+      "aqi": 146,
+      "co2": 551,
+      "createdAt": "2025_08_19_03_45_54",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 69,
+      "pm25": 54,
+      "temp": 32.375,
+      "voc": 0
+    },
+    "03_48_02": {
+      "aqi": 146,
+      "co2": 551,
+      "createdAt": "2025_08_19_03_48_02",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 37,
+      "pm10": 69,
+      "pm25": 54,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "08_43_14": {
+      "aqi": 54,
+      "co2": 422,
+      "createdAt": "2025_08_19_08_43_14",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 14,
+      "pm25": 14,
+      "temp": 32.6875,
+      "voc": 0
+    },
+    "08_45_17": {
+      "aqi": 54,
+      "co2": 410,
+      "createdAt": "2025_08_19_08_45_17",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 14,
+      "pm25": 14,
+      "temp": 33.0625,
+      "voc": 0
+    },
+    "08_47_19": {
+      "aqi": 54,
+      "co2": 412,
+      "createdAt": "2025_08_19_08_47_19",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 14,
+      "pm25": 14,
+      "temp": 33.3125,
+      "voc": 0
+    },
+    "08_49_26": {
+      "aqi": 57,
+      "co2": 438,
+      "createdAt": "2025_08_19_08_49_26",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 6,
+      "pm10": 15,
+      "pm25": 15,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "08_51_29": {
+      "aqi": 54,
+      "co2": 433,
+      "createdAt": "2025_08_19_08_51_29",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 15,
+      "pm25": 14,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "08_53_36": {
+      "aqi": 54,
+      "co2": 431,
+      "createdAt": "2025_08_19_08_53_36",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 15,
+      "pm25": 14,
+      "temp": 32.0625,
+      "voc": 0
+    },
+    "08_55_39": {
+      "aqi": 57,
+      "co2": 461,
+      "createdAt": "2025_08_19_08_55_39",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 16,
+      "pm25": 15,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "08_57_45": {
+      "aqi": 57,
+      "co2": 444,
+      "createdAt": "2025_08_19_08_57_45",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 16,
+      "pm25": 15,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "08_59_48": {
+      "aqi": 57,
+      "co2": 451,
+      "createdAt": "2025_08_19_08_59_48",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 5,
+      "pm10": 16,
+      "pm25": 15,
+      "temp": 32.0625,
+      "voc": 0
+    },
+    "09_01_55": {
+      "aqi": 73,
+      "co2": 446,
+      "createdAt": "2025_08_19_09_01_55",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 28,
+      "pm25": 23,
+      "temp": 31.75,
+      "voc": 0
+    },
+    "09_03_58": {
+      "aqi": 73,
+      "co2": 452,
+      "createdAt": "2025_08_19_09_03_58",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 28,
+      "pm25": 23,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "09_06_04": {
+      "aqi": 73,
+      "co2": 450,
+      "createdAt": "2025_08_19_09_06_04",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 28,
+      "pm25": 23,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "09_08_07": {
+      "aqi": 73,
+      "co2": 431,
+      "createdAt": "2025_08_19_09_08_07",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 28,
+      "pm25": 23,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "09_10_14": {
+      "aqi": 73,
+      "co2": 440,
+      "createdAt": "2025_08_19_09_10_14",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 28,
+      "pm25": 23,
+      "temp": 32.8125,
+      "voc": 0
+    },
+    "09_12_17": {
+      "aqi": 73,
+      "co2": 448,
+      "createdAt": "2025_08_19_09_12_17",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 27,
+      "pm25": 23,
+      "temp": 32.625,
+      "voc": 0
+    },
+    "09_14_24": {
+      "aqi": 73,
+      "co2": 436,
+      "createdAt": "2025_08_19_09_14_24",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 17,
+      "pm10": 27,
+      "pm25": 23,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "09_16_26": {
+      "aqi": 71,
+      "co2": 449,
+      "createdAt": "2025_08_19_09_16_26",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 16,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "09_18_33": {
+      "aqi": 71,
+      "co2": 433,
+      "createdAt": "2025_08_19_09_18_33",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 16,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 33,
+      "voc": 0
+    },
+    "09_20_36": {
+      "aqi": 71,
+      "co2": 435,
+      "createdAt": "2025_08_19_09_20_36",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 11,
+      "pm10": 27,
+      "pm25": 22,
+      "temp": 33.125,
+      "voc": 0
+    },
+    "09_22_42": {
+      "aqi": 71,
+      "co2": 410,
+      "createdAt": "2025_08_19_09_22_42",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 11,
+      "pm10": 27,
+      "pm25": 22,
+      "temp": 32.6875,
+      "voc": 0
+    },
+    "09_24_45": {
+      "aqi": 71,
+      "co2": 410,
+      "createdAt": "2025_08_19_09_24_45",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 11,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 32.75,
+      "voc": 0
+    },
+    "09_26_52": {
+      "aqi": 71,
+      "co2": 428,
+      "createdAt": "2025_08_19_09_26_52",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 11,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 33,
+      "voc": 0
+    },
+    "09_28_54": {
+      "aqi": 71,
+      "co2": 410,
+      "createdAt": "2025_08_19_09_28_54",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 10,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 32.625,
+      "voc": 0
+    },
+    "09_31_01": {
+      "aqi": 69,
+      "co2": 418,
+      "createdAt": "2025_08_19_09_31_01",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 24,
+      "pm25": 21,
+      "temp": 33.3125,
+      "voc": 0
+    },
+    "09_33_04": {
+      "aqi": 69,
+      "co2": 410,
+      "createdAt": "2025_08_19_09_33_04",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 24,
+      "pm25": 21,
+      "temp": 32.875,
+      "voc": 0
+    },
+    "09_35_11": {
+      "aqi": 69,
+      "co2": 410,
+      "createdAt": "2025_08_19_09_35_11",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 23,
+      "pm25": 21,
+      "temp": 33.5625,
+      "voc": 0
+    },
+    "10_15_47": {
+      "aqi": 92,
+      "co2": 418,
+      "createdAt": "2025_08_19_10_15_47",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 19,
+      "pm10": 45,
+      "pm25": 32,
+      "temp": 33.4375,
+      "voc": 0
+    },
+    "10_17_49": {
+      "aqi": 92,
+      "co2": 419,
+      "createdAt": "2025_08_19_10_17_49",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 19,
+      "pm10": 45,
+      "pm25": 32,
+      "temp": 33.625,
+      "voc": 0
+    },
+    "10_19_52": {
+      "aqi": 92,
+      "co2": 410,
+      "createdAt": "2025_08_19_10_19_52",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 19,
+      "pm10": 45,
+      "pm25": 32,
+      "temp": 33.875,
+      "voc": 0
+    },
+    "10_21_59": {
+      "aqi": 97,
+      "co2": 435,
+      "createdAt": "2025_08_19_10_21_59",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 20,
+      "pm10": 48,
+      "pm25": 34,
+      "temp": 34.1875,
+      "voc": 0
+    },
+    "10_24_01": {
+      "aqi": 97,
+      "co2": 436,
+      "createdAt": "2025_08_19_10_24_01",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 20,
+      "pm10": 48,
+      "pm25": 34,
+      "temp": 33.8125,
+      "voc": 0
+    },
+    "10_26_08": {
+      "aqi": 97,
+      "co2": 414,
+      "createdAt": "2025_08_19_10_26_08",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 20,
+      "pm10": 47,
+      "pm25": 34,
+      "temp": 33.8125,
+      "voc": 0
+    },
+    "10_28_11": {
+      "aqi": 104,
+      "co2": 439,
+      "createdAt": "2025_08_19_10_28_11",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 21,
+      "pm10": 50,
+      "pm25": 37,
+      "temp": 33.8125,
+      "voc": 0
+    },
+    "10_30_18": {
+      "aqi": 104,
+      "co2": 440,
+      "createdAt": "2025_08_19_10_30_18",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 21,
+      "pm10": 50,
+      "pm25": 37,
+      "temp": 33.8125,
+      "voc": 0
+    },
+    "10_32_23": {
+      "aqi": 104,
+      "co2": 421,
+      "createdAt": "2025_08_19_10_32_23",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 21,
+      "pm10": 50,
+      "pm25": 37,
+      "temp": 33.75,
+      "voc": 0
+    },
+    "10_34_30": {
+      "aqi": 54,
+      "co2": 416,
+      "createdAt": "2025_08_19_10_34_30",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 7,
+      "pm10": 17,
+      "pm25": 14,
+      "temp": 33.625,
+      "voc": 0
+    },
+    "10_36_33": {
+      "aqi": 54,
+      "co2": 420,
+      "createdAt": "2025_08_19_10_36_33",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 7,
+      "pm10": 17,
+      "pm25": 14,
+      "temp": 33.5625,
+      "voc": 0
+    },
+    "10_38_39": {
+      "aqi": 54,
+      "co2": 421,
+      "createdAt": "2025_08_19_10_38_39",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 7,
+      "pm10": 17,
+      "pm25": 14,
+      "temp": 33.1875,
+      "voc": 0
+    },
+    "10_40_42": {
+      "aqi": 54,
+      "co2": 415,
+      "createdAt": "2025_08_19_10_40_42",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 7,
+      "pm10": 17,
+      "pm25": 14,
+      "temp": 33.25,
+      "voc": 0
+    },
+    "10_42_48": {
+      "aqi": 54,
+      "co2": 414,
+      "createdAt": "2025_08_19_10_42_48",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 7,
+      "pm10": 17,
+      "pm25": 14,
+      "temp": 34.1875,
+      "voc": 0
+    },
+    "10_44_51": {
+      "aqi": 52,
+      "co2": 410,
+      "createdAt": "2025_08_19_10_44_51",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 6,
+      "pm10": 16,
+      "pm25": 13,
+      "temp": 33.75,
+      "voc": 0
+    },
+    "10_46_57": {
+      "aqi": 52,
+      "co2": 410,
+      "createdAt": "2025_08_19_10_46_57",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 6,
+      "pm10": 16,
+      "pm25": 13,
+      "temp": 33,
+      "voc": 0
+    },
+    "10_49_00": {
+      "aqi": 52,
+      "co2": 412,
+      "createdAt": "2025_08_19_10_49_00",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 6,
+      "pm10": 16,
+      "pm25": 13,
+      "temp": 33.0625,
+      "voc": 0
+    },
+    "10_51_06": {
+      "aqi": 52,
+      "co2": 421,
+      "createdAt": "2025_08_19_10_51_06",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 6,
+      "pm10": 16,
+      "pm25": 13,
+      "temp": 33.625,
+      "voc": 0
+    },
+    "10_53_09": {
+      "aqi": 71,
+      "co2": 414,
+      "createdAt": "2025_08_19_10_53_09",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 8,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 33.375,
+      "voc": 0
+    },
+    "10_55_16": {
+      "aqi": 71,
+      "co2": 410,
+      "createdAt": "2025_08_19_10_55_16",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 8,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 34,
+      "voc": 0
+    },
+    "10_57_18": {
+      "aqi": 71,
+      "co2": 417,
+      "createdAt": "2025_08_19_10_57_18",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 8,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 33.1875,
+      "voc": 0
+    },
+    "10_59_26": {
+      "aqi": 71,
+      "co2": 409,
+      "createdAt": "2025_08_19_10_59_26",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 8,
+      "pm10": 26,
+      "pm25": 22,
+      "temp": 33.5,
+      "voc": 0
+    },
+    "11_01_29": {
+      "aqi": 73,
+      "co2": 415,
+      "createdAt": "2025_08_19_11_01_29",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 27,
+      "pm25": 23,
+      "temp": 33.625,
+      "voc": 0
+    },
+    "11_03_35": {
+      "aqi": 73,
+      "co2": 422,
+      "createdAt": "2025_08_19_11_03_35",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 27,
+      "pm25": 23,
+      "temp": 33.9375,
+      "voc": 0
+    },
+    "11_05_38": {
+      "aqi": 71,
+      "co2": 417,
+      "createdAt": "2025_08_19_11_05_38",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 9,
+      "pm10": 27,
+      "pm25": 22,
+      "temp": 33.75,
+      "voc": 0
+    },
+    "11_21_41": {
+      "aqi": 53,
+      "co2": 436,
+      "createdAt": "2025_08_19_11_21_41",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 6,
+      "pm25": 5,
+      "temp": 32.3125,
+      "voc": 0
+    },
+    "11_23_44": {
+      "aqi": 51,
+      "co2": 423,
+      "createdAt": "2025_08_19_11_23_44",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 6,
+      "pm25": 5,
+      "temp": 31.75,
+      "voc": 0
+    },
+    "11_25_47": {
+      "aqi": 50,
+      "co2": 410,
+      "createdAt": "2025_08_19_11_25_47",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 6,
+      "pm25": 5,
+      "temp": 31.875,
+      "voc": 0
+    },
+    "11_27_55": {
+      "aqi": 50,
+      "co2": 410,
+      "createdAt": "2025_08_19_11_27_55",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "11_29_58": {
+      "aqi": 50,
+      "co2": 410,
+      "createdAt": "2025_08_19_11_29_58",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "11_32_05": {
+      "aqi": 53,
+      "co2": 438,
+      "createdAt": "2025_08_19_11_32_05",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 32.3125,
+      "voc": 0
+    },
+    "11_34_08": {
+      "aqi": 51,
+      "co2": 420,
+      "createdAt": "2025_08_19_11_34_08",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "11_36_22": {
+      "aqi": 52,
+      "co2": 425,
+      "createdAt": "2025_08_19_11_36_22",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 3,
+      "temp": 32.5,
+      "voc": 0
+    },
+    "11_38_26": {
+      "aqi": 51,
+      "co2": 418,
+      "createdAt": "2025_08_19_11_38_26",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 3,
+      "temp": 31.875,
+      "voc": 0
+    },
+    "11_40_39": {
+      "aqi": 50,
+      "co2": 411,
+      "createdAt": "2025_08_19_11_40_39",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 31.875,
+      "voc": 0
+    },
+    "11_42_42": {
+      "aqi": 53,
+      "co2": 440,
+      "createdAt": "2025_08_19_11_42_42",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 32,
+      "voc": 0
+    },
+    "11_44_49": {
+      "aqi": 53,
+      "co2": 442,
+      "createdAt": "2025_08_19_11_44_49",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 32.375,
+      "voc": 0
+    },
+    "11_46_51": {
+      "aqi": 53,
+      "co2": 441,
+      "createdAt": "2025_08_19_11_46_51",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 2,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "11_49_03": {
+      "aqi": 51,
+      "co2": 415,
+      "createdAt": "2025_08_19_11_49_03",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 3,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "11_51_47": {
+      "aqi": 51,
+      "co2": 416,
+      "createdAt": "2025_08_19_11_51_47",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.0625,
+      "voc": 0
+    },
+    "11_53_55": {
+      "aqi": 50,
+      "co2": 410,
+      "createdAt": "2025_08_19_11_53_55",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "11_55_59": {
+      "aqi": 53,
+      "co2": 445,
+      "createdAt": "2025_08_19_11_55_59",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.25,
+      "voc": 0
+    },
+    "11_58_05": {
+      "aqi": 51,
+      "co2": 419,
+      "createdAt": "2025_08_19_11_58_05",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.875,
+      "voc": 0
+    },
+    "12_00_08": {
+      "aqi": 52,
+      "co2": 430,
+      "createdAt": "2025_08_19_12_00_08",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.5625,
+      "voc": 0
+    },
+    "12_02_16": {
+      "aqi": 54,
+      "co2": 453,
+      "createdAt": "2025_08_19_12_02_16",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 32.6875,
+      "voc": 0
+    },
+    "12_04_18": {
+      "aqi": 53,
+      "co2": 443,
+      "createdAt": "2025_08_19_12_04_18",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 3,
+      "temp": 32.125,
+      "voc": 0
+    },
+    "12_06_26": {
+      "aqi": 53,
+      "co2": 445,
+      "createdAt": "2025_08_19_12_06_26",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 32.3125,
+      "voc": 0
+    },
+    "12_08_28": {
+      "aqi": 54,
+      "co2": 449,
+      "createdAt": "2025_08_19_12_08_28",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 32.6875,
+      "voc": 0
+    },
+    "12_10_35": {
+      "aqi": 54,
+      "co2": 456,
+      "createdAt": "2025_08_19_12_10_35",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 3,
+      "pm25": 2,
+      "temp": 32.4375,
+      "voc": 0
+    },
+    "12_12_38": {
+      "aqi": 54,
+      "co2": 448,
+      "createdAt": "2025_08_19_12_12_38",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 3,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "12_14_45": {
+      "aqi": 53,
+      "co2": 436,
+      "createdAt": "2025_08_19_12_14_45",
+      "hum": 50,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 4,
+      "pm25": 3,
+      "temp": 32.1875,
+      "voc": 0
+    },
+    "13_05_15": {
+      "aqi": 57,
+      "co2": 492,
+      "createdAt": "2025_08_19_13_05_15",
+      "hum": 82.9,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_07_26": {
+      "aqi": 57,
+      "co2": 487,
+      "createdAt": "2025_08_19_13_07_26",
+      "hum": 82.8,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_09_30": {
+      "aqi": 56,
+      "co2": 476,
+      "createdAt": "2025_08_19_13_09_30",
+      "hum": 82.7,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_11_39": {
+      "aqi": 54,
+      "co2": 459,
+      "createdAt": "2025_08_19_13_11_39",
+      "hum": 83,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.5625,
+      "voc": 0
+    },
+    "13_13_51": {
+      "aqi": 55,
+      "co2": 471,
+      "createdAt": "2025_08_19_13_13_51",
+      "hum": 83,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_15_59": {
+      "aqi": 59,
+      "co2": 508,
+      "createdAt": "2025_08_19_13_15_59",
+      "hum": 83.3,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_18_03": {
+      "aqi": 58,
+      "co2": 502,
+      "createdAt": "2025_08_19_13_18_03",
+      "hum": 82.9,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_20_11": {
+      "aqi": 59,
+      "co2": 512,
+      "createdAt": "2025_08_19_13_20_11",
+      "hum": 83.2,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.5,
+      "voc": 0
+    },
+    "13_22_16": {
+      "aqi": 60,
+      "co2": 531,
+      "createdAt": "2025_08_19_13_22_16",
+      "hum": 83.8,
+      "no2": 0,
+      "pm1": 2,
+      "pm10": 5,
+      "pm25": 4,
+      "temp": 30.5,
+      "voc": 0
+    },
+    "13_24_24": {
+      "aqi": 61,
+      "co2": 542,
+      "createdAt": "2025_08_19_13_24_24",
+      "hum": 84,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 6,
+      "pm25": 6,
+      "temp": 30.5625,
+      "voc": 0
+    },
+    "13_26_28": {
+      "aqi": 63,
+      "co2": 566,
+      "createdAt": "2025_08_19_13_26_28",
+      "hum": 84.4,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 6,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_28_37": {
+      "aqi": 59,
+      "co2": 517,
+      "createdAt": "2025_08_19_13_28_37",
+      "hum": 84.2,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 6,
+      "temp": 30.5625,
+      "voc": 0
+    },
+    "13_30_41": {
+      "aqi": 59,
+      "co2": 518,
+      "createdAt": "2025_08_19_13_30_41",
+      "hum": 83.5,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 5,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_32_50": {
+      "aqi": 58,
+      "co2": 501,
+      "createdAt": "2025_08_19_13_32_50",
+      "hum": 83.8,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 5,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_34_54": {
+      "aqi": 59,
+      "co2": 516,
+      "createdAt": "2025_08_19_13_34_54",
+      "hum": 82.6,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 6,
+      "temp": 30.8125,
+      "voc": 0
+    },
+    "13_37_02": {
+      "aqi": 60,
+      "co2": 529,
+      "createdAt": "2025_08_19_13_37_02",
+      "hum": 82.4,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 6,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_39_07": {
+      "aqi": 61,
+      "co2": 537,
+      "createdAt": "2025_08_19_13_39_07",
+      "hum": 81.8,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 7,
+      "pm25": 6,
+      "temp": 30.8125,
+      "voc": 0
+    },
+    "13_41_15": {
+      "aqi": 57,
+      "co2": 492,
+      "createdAt": "2025_08_19_13_41_15",
+      "hum": 81.4,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 7,
+      "pm25": 6,
+      "temp": 30.8125,
+      "voc": 0
+    },
+    "13_43_19": {
+      "aqi": 56,
+      "co2": 483,
+      "createdAt": "2025_08_19_13_43_19",
+      "hum": 80.5,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 30.625,
+      "voc": 0
+    },
+    "13_45_29": {
+      "aqi": 56,
+      "co2": 474,
+      "createdAt": "2025_08_19_13_45_29",
+      "hum": 79.9,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 7,
+      "pm25": 4,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_47_31": {
+      "aqi": 55,
+      "co2": 470,
+      "createdAt": "2025_08_19_13_47_31",
+      "hum": 80.4,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 3,
+      "temp": 30.625,
+      "voc": 0
+    },
+    "13_49_40": {
+      "aqi": 56,
+      "co2": 478,
+      "createdAt": "2025_08_19_13_49_40",
+      "hum": 80.8,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 3,
+      "temp": 30.6875,
+      "voc": 0
+    },
+    "13_51_44": {
+      "aqi": 58,
+      "co2": 496,
+      "createdAt": "2025_08_19_13_51_44",
+      "hum": 80.9,
+      "no2": 0,
+      "pm1": 0,
+      "pm10": 6,
+      "pm25": 3,
+      "temp": 30.625,
+      "voc": 0
+    },
+    "13_53_53": {
+      "aqi": 59,
+      "co2": 512,
+      "createdAt": "2025_08_19_13_53_53",
+      "hum": 80.8,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 8,
+      "pm25": 4,
+      "temp": 30.75,
+      "voc": 0
+    },
+    "13_55_57": {
+      "aqi": 60,
+      "co2": 531,
+      "createdAt": "2025_08_19_13_55_57",
+      "hum": 81,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 8,
+      "pm25": 5,
+      "temp": 30.625,
+      "voc": 0
+    },
+    "13_58_06": {
+      "aqi": 60,
+      "co2": 521,
+      "createdAt": "2025_08_19_13_58_06",
+      "hum": 81.2,
+      "no2": 0,
+      "pm1": 1,
+      "pm10": 8,
+      "pm25": 5,
+      "temp": 30.75,
+      "voc": 0
+    }
+  },
   "2025_7_15": {
     "17_23_11": {
       "aqi": 84,
@@ -11818,101 +12579,278 @@ const App = () => {
       "voc": 0
     }
   },
-  // "_2025_08_17_01_04_15": {
-  //   "aqi": 67,
-  //   "co2": 615,
-  //   "createdAt": "2025-08-17 01:04:15",
-  //   "hum": 80.5,
-  //   "no2": 0,
-  //   "nox_raw": 11382,
-  //   "pm1": 4,
-  //   "pm10": 19,
-  //   "pm25": 12,
-  //   "temp": 29.25,
-  //   "voc": 0,
-  //   "voc_raw": 30435
-  // },
-  // "_2025_08_17_09_53_56": {
-  //   "aqi": 55,
-  //   "co2": 462,
-  //   "createdAt": "2025-08-17 09:53:56",
-  //   "hum": 85.2,
-  //   "no2": 0,
-  //   "pm1": 1,
-  //   "pm10": 9,
-  //   "pm25": 7,
-  //   "temp": 27.25,
-  //   "voc": 0
-  // },
-  // "_2025_08_17_09_56_00": {
-  //   "aqi": 55,
-  //   "co2": 460,
-  //   "createdAt": "2025-08-17 09:56:00",
-  //   "hum": 85.3,
-  //   "no2": 0,
-  //   "pm1": 2,
-  //   "pm10": 9,
-  //   "pm25": 8,
-  //   "temp": 26.75,
-  //   "voc": 0
-  // },
-  // "_2025_08_17_09_58_04": {
-  //   "aqi": 54,
-  //   "co2": 459,
-  //   "createdAt": "2025-08-17 09:58:04",
-  //   "hum": 84.6,
-  //   "no2": 0,
-  //   "pm1": 2,
-  //   "pm10": 9,
-  //   "pm25": 8,
-  //   "temp": 27,
-  //   "voc": 0
-  // },
-  // "_2025_08_17_10_00_12": {
-  //   "aqi": 58,
-  //   "co2": 499,
-  //   "createdAt": "2025-08-17 10:00:12",
-  //   "hum": 84.7,
-  //   "no2": 0,
-  //   "pm1": 2,
-  //   "pm10": 9,
-  //   "pm25": 8,
-  //   "temp": 27.125,
-  //   "voc": 0
-  // },
-  // "_2025_08_17_10_02_16": {
-  //   "aqi": 56,
-  //   "co2": 483,
-  //   "createdAt": "2025-08-17 10:02:16",
-  //   "hum": 84.5,
-  //   "no2": 0,
-  //   "pm1": 2,
-  //   "pm10": 9,
-  //   "pm25": 8,
-  //   "temp": 27.3125,
-  //   "voc": 0
-  // },
-  // "_2025_08_17_10_04_23": {
-  //   "aqi": 59,
-  //   "co2": 508,
-  //   "createdAt": "2025-08-17 10:04:23",
-  //   "hum": 84.3,
-  //   "no2": 0,
-  //   "pm1": 2,
-  //   "pm10": 9,
-  //   "pm25": 8,
-  //   "temp": 27.4375,
-  //   "voc": 0
-  // }
-
+  "_2025_08_17_01_04_15": {
+    "aqi": 67,
+    "co2": 615,
+    "createdAt": "2025-08-17 01:04:15",
+    "hum": 80.5,
+    "no2": 0,
+    "nox_raw": 11382,
+    "pm1": 4,
+    "pm10": 19,
+    "pm25": 12,
+    "temp": 29.25,
+    "voc": 0,
+    "voc_raw": 30435
+  },
+  "_2025_08_17_09_53_56": {
+    "aqi": 55,
+    "co2": 462,
+    "createdAt": "2025-08-17 09:53:56",
+    "hum": 85.2,
+    "no2": 0,
+    "pm1": 1,
+    "pm10": 9,
+    "pm25": 7,
+    "temp": 27.25,
+    "voc": 0
+  },
+  "_2025_08_17_09_56_00": {
+    "aqi": 55,
+    "co2": 460,
+    "createdAt": "2025-08-17 09:56:00",
+    "hum": 85.3,
+    "no2": 0,
+    "pm1": 2,
+    "pm10": 9,
+    "pm25": 8,
+    "temp": 26.75,
+    "voc": 0
+  },
+  "_2025_08_17_09_58_04": {
+    "aqi": 54,
+    "co2": 459,
+    "createdAt": "2025-08-17 09:58:04",
+    "hum": 84.6,
+    "no2": 0,
+    "pm1": 2,
+    "pm10": 9,
+    "pm25": 8,
+    "temp": 27,
+    "voc": 0
+  },
+  "_2025_08_17_10_00_12": {
+    "aqi": 58,
+    "co2": 499,
+    "createdAt": "2025-08-17 10:00:12",
+    "hum": 84.7,
+    "no2": 0,
+    "pm1": 2,
+    "pm10": 9,
+    "pm25": 8,
+    "temp": 27.125,
+    "voc": 0
+  },
+  "_2025_08_17_10_02_16": {
+    "aqi": 56,
+    "co2": 483,
+    "createdAt": "2025-08-17 10:02:16",
+    "hum": 84.5,
+    "no2": 0,
+    "pm1": 2,
+    "pm10": 9,
+    "pm25": 8,
+    "temp": 27.3125,
+    "voc": 0
+  },
+  "_2025_08_17_10_04_23": {
+    "aqi": 59,
+    "co2": 508,
+    "createdAt": "2025-08-17 10:04:23",
+    "hum": 84.3,
+    "no2": 0,
+    "pm1": 2,
+    "pm10": 9,
+    "pm25": 8,
+    "temp": 27.4375,
+    "voc": 0
+  },
+  "air_quality_readings": {
+    "-OXSV4J9AkBb5PzcD6jk": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 500,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 63,
+      "pm10": 19,
+      "pm1_0": 7,
+      "pm2_5": 18,
+      "timestamp": "2025-08-12 14:30:09",
+      "voc_index": 0
+    },
+    "-OXSV5XYv91DlCbXUYjV": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 501,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 18,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:15",
+      "voc_index": 0
+    },
+    "-OXSV6kVxsRolTzP2VGt": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 496,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.5625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 18,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:20",
+      "voc_index": 0
+    },
+    "-OXSV7yn7S_v_MIdN5LM": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 501,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.5,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 18,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:25",
+      "voc_index": 0
+    },
+    "-OXSV9CD6fYIsqwJLrjj": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 496,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.75,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 63,
+      "pm10": 19,
+      "pm1_0": 7,
+      "pm2_5": 18,
+      "timestamp": "2025-08-12 14:30:30",
+      "voc_index": 0
+    },
+    "-OXSVAQQ6e1t0RT253_4": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 490,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.5625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 63,
+      "pm10": 19,
+      "pm1_0": 7,
+      "pm2_5": 18,
+      "timestamp": "2025-08-12 14:30:35",
+      "voc_index": 0
+    },
+    "-OXSVBdV5FYslamIHv2m": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 486,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.5625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 63,
+      "pm10": 19,
+      "pm1_0": 7,
+      "pm2_5": 18,
+      "timestamp": "2025-08-12 14:30:40",
+      "voc_index": 0
+    },
+    "-OXSVCsZJxugcdmkA5-C": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 481,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.625,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 18,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:45",
+      "voc_index": 0
+    },
+    "-OXSVE5yFlrrRfsdM6ri": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 477,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.8125,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 18,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:50",
+      "voc_index": 0
+    },
+    "-OXSVFKR4MzLZCL6MEJ8": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 473,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.6875,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 19,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:30:55",
+      "voc_index": 0
+    },
+    "-OXSVGYVAM3477rl24vs": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 471,
+      "dht_temperature": 0,
+      "ds18b20_temperature": 33.6875,
+      "humidity": 0,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 19,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:31:00",
+      "voc_index": 0
+    },
+    "-OXSVHmC_B7hShYDCR6W": {
+      "alert_triggered": false,
+      "aqi_status": "Moderate",
+      "co2_ppm": 473,
+      "dht_temperature": 25,
+      "ds18b20_temperature": 33.625,
+      "humidity": 50,
+      "nox_index": 0,
+      "overall_aqi": 61,
+      "pm10": 19,
+      "pm1_0": 6,
+      "pm2_5": 17,
+      "timestamp": "2025-08-12 14:31:05",
+      "voc_index": 0
+    }
+  }
 }
-  
 
-  
-   
-
-
-  return <AirQualityDashboard data={airQualityData} />;
+const App = () => {
+  return <AirQualityDashboard data={fullAirQualityData} />;
 };
 
-export default AirQualityDashboard;
+export default App;
