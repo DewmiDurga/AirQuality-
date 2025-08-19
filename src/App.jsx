@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Heart, Share2, Droplets, Sun } from 'lucide-react';
+
 import ParameterDetailComponent from './components/parameters';
 import axios from 'axios';
 import AirQualityForm from './components/AddData';
 import NewGraph from './components/newGraph';
+// import AirQualityDashboard from './components/graph';
 import AirQualityDashboard from './components/graph';
+import airQualityData from './oldData'
 
 const BreathEasyDashboard = () => {
     const databaseURL = "https://breath-easy-2-default-rtdb.asia-southeast1.firebasedatabase.app/";
-    const itemsEndpoint = `${databaseURL}2025_08_17.json`;
+    const itemsEndpoint = `${databaseURL}2025_08_19.json`;
     const [fetchedData, setFetchedData] = useState([]);
     const [fetchError, setFetchError] = useState('');
     const [lastItem, setLastItem] = useState({});
@@ -44,7 +47,7 @@ const BreathEasyDashboard = () => {
             const data = response.data;
             
             
-            console.log('response', response)
+            console.log('data:', data)
             const dataArray = data
                 ? Object.keys(data).map(key => ({
                     id: key,
@@ -55,6 +58,8 @@ const BreathEasyDashboard = () => {
             setFetchedData(dataArray);
             if (dataArray.length > 0) {
                 setLastItem(dataArray[dataArray.length - 1]);
+                console.log('lastItem',lastItem);
+                
             }
         } catch (err) {
             console.error("Error fetching data:", err);
@@ -578,7 +583,7 @@ const BreathEasyDashboard = () => {
                         }}>
                             {lastItem && Object.keys(lastItem).map((key) => {
                                 // Skip non-sensor data fields
-                                if (key === 'id' || key === 'createdAt' || key === 'aqi') return null;
+                                if (key === 'id' || key === 'createdAt' ) return null;
                                 
                                 // Format the display name
                                 const displayName = key === 'temp' ? 'Temperature' :
@@ -588,6 +593,7 @@ const BreathEasyDashboard = () => {
                                                  key === 'voc' ? 'VOC' :
                                                  key === 'PM1' ? 'PM1' :
                                                  key === 'PM10' ? 'PM10' :
+                                                 key === 'aqi' ? 'AQI' :
                                                  key === 'PM2.5' ? 'PM2.5' :
                                                  //key === 'o3' ? 'O3' :
                                                  key;
@@ -644,7 +650,11 @@ const BreathEasyDashboard = () => {
                                     </div>
                                 );
                             })}
+                           
                         </div>
+
+
+                          <AirQualityDashboard data= {airQualityData} />
                     </>
              ) : activeSection === 'graph' ? (
     <div>
@@ -656,7 +666,7 @@ const BreathEasyDashboard = () => {
         }}>
             Previous Air Quality Charts
         </h2>
-        <AirQualityDashboard />
+       
     </div>
 ) : (
                     <div style={{
@@ -761,6 +771,8 @@ const BreathEasyDashboard = () => {
                     © 2025 Breath Easy. All rights reserved.
                 </div>
             </div>
+            
+          
         </div>
     );
 };

@@ -19,7 +19,6 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
 
   // Get the appropriate dataset based on dataType parameter
   const getDataset = () => {
-    
     if (!data || !data[dataType]) {
       console.warn(`Data type '${dataType}' not found in provided data object`);
       return [];
@@ -33,13 +32,11 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
       temp: { unit: '°C', title: 'Temperature', color: '#2563eb' },
       hum: { unit: '%', title: 'Humidity', color: '#059669' },
       co2: { unit: 'ppm', title: 'CO2', color: '#dc2626' },
-     // o3: { unit: 'ppb', title: 'Ozone', color: '#7c3aed' },
       pm25: { unit: 'μg/m³', title: 'PM2.5', color: '#ea580c' },
       pm10: { unit: 'μg/m³', title: 'PM10', color: '#d97706' },
       pressure: { unit: 'hPa', title: 'Pressure', color: '#0891b2' },
       light: { unit: 'lux', title: 'Light', color: '#ca8a04' }
     };
-    
     
     const defaultProps = defaults[dataType.toLowerCase()] || { unit: '', title: dataType.toUpperCase(), color: '#6b7280' };
     
@@ -64,82 +61,47 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
     const width = 800 - margin.left - margin.right;
     const height = 400 - margin.top - margin.bottom;
 
-    // Create all data points with interpolated values for smooth transitions
+    // Create all data points with actual timestamps
     const allDataPoints = [];
     const dailyAverages = [];
     
-    // dataset.forEach(day => {
-    //   const dayDate = new Date(day.date);
-    //   const dayAverage = getAverage(day);
-      
-    //   // Add daily average point
-    //   dailyAverages.push({
-    //     date: new Date(dayDate.getTime() + 12 * 60 * 60 * 1000), // Noon
-    //     value: dayAverage,
-    //     type: 'average',
-    //     opacity: 1
-    //   });
-      
-    //   // Add individual readings with timestamps throughout the day
-    //   day.values.forEach((value, index) => {
-    //     const time = new Date(dayDate);
-    //     time.setHours(index * (24 / day.values.length)); // Distribute evenly through day
-    //     allDataPoints.push({
-    //       date: time,
-    //       value: value,
-    //       type: 'reading',
-    //       dayAverage: dayAverage
-    //     });
-    //   });
-    // });
     dataset.forEach(entry => {
-
-      // console.log('day',day);
-      let raw = entry.date
-      
-
-      const [year, month, day, hour, minute, second] = raw.split("_").map(Number);
-
+      // Parse the timestamp correctly
+      const [year, month, day, hour, minute, second] = entry.date.split("_").map(Number);
       // JS Date month is 0-indexed (0 = Jan, 11 = Dec)
-      const dayDate = new Date(year, month - 1, day, hour, minute, second);
-
-      // console.log("Parsed date:", dayDate);
-
-      // const dayDate = new Date(day.date);
+      const actualDateTime = new Date(year, month - 1, day, hour, minute, second);
+      
       const dayAverage = getAverage(entry);
-
-      // console.log('day.date', entry.date);
       
-      // console.log('daydate', dayDate);
-      console.log('new', dayDate);
-
-      // const raw = "2025_8_7_15_29_32"; 
-
-
-
-      
-      console.log('new', new Date(dayDate.getTime() + 12 * 60 * 60 * 1000));
-      
-      // Add daily average point
+      // Add daily average point using the actual timestamp (not adding 12 hours)
       dailyAverages.push({
-        date: new Date(dayDate.getTime() + 12 * 60 * 60 * 1000), // Noon
+        date: new Date(actualDateTime), // Use actual time
         value: dayAverage,
         type: 'average',
         opacity: 1
       });
       
-      // Add individual readings with timestamps throughout the day
+      // Add individual readings with actual timestamps
+      // If you have multiple values per entry, you'll need to determine how to timestamp them
+      // For now, I'll assume each value represents a reading at the base timestamp
       entry.values.forEach((value, index) => {
-        const time = new Date(dayDate);
-        time.setHours(index * (24 / entry.values.length)); // Distribute evenly through day
+        // Create timestamps for each reading
+        // You can adjust this logic based on how your values should be distributed
+        const readingTime = new Date(actualDateTime);
+        
+        // If multiple readings per timestamp, spread them slightly apart
+        if (entry.values.length > 1) {
+          readingTime.setMinutes(actualDateTime.getMinutes() + (index * 5)); // 5 minute intervals
+        }
+        
         allDataPoints.push({
-          date: time,
+          date: readingTime,
           value: value,
           type: 'reading',
           dayAverage: dayAverage
         });
       });
-    })
+    });
 
     // Calculate interpolated points for smooth transition
     const interpolatedData = [];
@@ -147,85 +109,46 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
     const detailLevel = (zoomFactor - 1) / 7; // 0 to 1 scale
 
     // Create interpolated dataset based on zoom level
-//     dataset.forEach(entry => {
-//       // console.log("day: ", day.date)
-//       // const dayDate = new Date(day.date);
-//       // console.log("day: ", dayDate)
-//       const [year, month, day, hour, minute, second] = entry.split("_").map(Number);
-
-// // Create a valid JS date
-//       const dayDate = new Date(year, month - 1, day, hour, minute, second);
-//       console.log('datDate', dayDate);
-      
-//       const dayAverage = getAverage(day);
-//       const pointsToShow = Math.max(1, Math.floor(1 + (day.values.length - 1) * detailLevel));
-      
-//       for (let i = 0; i < pointsToShow; i++) {
-//         const progress = i / Math.max(pointsToShow - 1, 1);
-//         const time = new Date(dayDate);
-//         time.setHours(progress * 24);
-        
-//         let value;
-//         if (detailLevel === 0) {
-//           // Pure average
-//           value = dayAverage;
-//         } else if (detailLevel === 1) {
-//           // Pure individual readings
-//           const readingIndex = Math.floor(progress * (day.values.length - 1));
-//           value = day.values[readingIndex] || day.values[day.values.length - 1];
-//         } else {
-//           // Interpolated between average and readings
-//           const readingIndex = Math.floor(progress * (day.values.length - 1));
-//           const reading = day.values[readingIndex] || day.values[day.values.length - 1];
-//           value = dayAverage * (1 - detailLevel) + reading * detailLevel;
-//         }
-        
-//         interpolatedData.push({
-//           date: time,
-//           value: value,
-//           type: detailLevel < 0.3 ? 'average' : 'mixed',
-//           detailLevel: detailLevel
-//         });
-//       }
-//     });
-
     dataset.forEach(entry => {
-  // Extract date parts from the string
-  const [year, month, dayNum, hour, minute, second] = entry.date.split("_").map(Number);
+      // Parse timestamp correctly
+      const [year, month, dayNum, hour, minute, second] = entry.date.split("_").map(Number);
+      const actualDateTime = new Date(year, month - 1, dayNum, hour, minute, second);
+      
+      const dayAverage = getAverage(entry);
+      const pointsToShow = Math.max(1, Math.floor(1 + (entry.values.length - 1) * detailLevel));
 
-  // Create a valid Date object
-  const dayDate = new Date(year, month - 1, dayNum, hour, minute, second);
-  console.log('dayDate', dayDate);
-  
-  const dayAverage = getAverage(entry);
-  const pointsToShow = Math.max(1, Math.floor(1 + (entry.values.length - 1) * detailLevel));
-
-  for (let i = 0; i < pointsToShow; i++) {
-    const progress = i / Math.max(pointsToShow - 1, 1);
-    const time = new Date(dayDate);
-    time.setHours(progress * 24);
-    
-    let value;
-    if (detailLevel === 0) {
-      value = dayAverage;
-    } else if (detailLevel === 1) {
-      const readingIndex = Math.floor(progress * (entry.values.length - 1));
-      value = entry.values[readingIndex] || entry.values[entry.values.length - 1];
-    } else {
-      const readingIndex = Math.floor(progress * (entry.values.length - 1));
-      const reading = entry.values[readingIndex] || entry.values[entry.values.length - 1];
-      value = dayAverage * (1 - detailLevel) + reading * detailLevel;
-    }
-    
-    interpolatedData.push({
-      date: time,
-      value: value,
-      type: detailLevel < 0.3 ? 'average' : 'mixed',
-      detailLevel: detailLevel
+      for (let i = 0; i < pointsToShow; i++) {
+        const progress = i / Math.max(pointsToShow - 1, 1);
+        
+        // Create time based on actual timestamp
+        let time = new Date(actualDateTime);
+        
+        // If showing multiple points, spread them around the actual time
+        if (pointsToShow > 1) {
+          const minuteOffset = (progress - 0.5) * 60; // Spread within 1 hour around actual time
+          time.setMinutes(time.getMinutes() + minuteOffset);
+        }
+        
+        let value;
+        if (detailLevel === 0) {
+          value = dayAverage;
+        } else if (detailLevel === 1) {
+          const readingIndex = Math.floor(progress * (entry.values.length - 1));
+          value = entry.values[readingIndex] || entry.values[entry.values.length - 1];
+        } else {
+          const readingIndex = Math.floor(progress * (entry.values.length - 1));
+          const reading = entry.values[readingIndex] || entry.values[entry.values.length - 1];
+          value = dayAverage * (1 - detailLevel) + reading * detailLevel;
+        }
+        
+        interpolatedData.push({
+          date: time,
+          value: value,
+          type: detailLevel < 0.3 ? 'average' : 'mixed',
+          detailLevel: detailLevel
+        });
+      }
     });
-  }
-});
-
 
     const g = svg.append("g")
       .attr("transform", `translate(${margin.left},${margin.top})`);
@@ -276,7 +199,7 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
       .attr("transform", `translate(${width / 2}, ${height + margin.bottom})`)
       .style("text-anchor", "middle")
       .style("font-size", "12px")
-      .text("Date");
+      .text("Date & Time");
 
     // Add grid lines
     g.append("g")
@@ -335,7 +258,8 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
           .style("z-index", "1000");
 
         tooltip.html(`
-          Date: ${d.date.toLocaleDateString()} ${detailLevel > 0.3 ? d.date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}<br/>
+          Date: ${d.date.toLocaleDateString()}<br/>
+          Time: ${d.date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'})}<br/>
           ${displayProps.title}: ${d.value.toFixed(1)}${displayProps.unit}<br/>
           Detail Level: ${(detailLevel * 100).toFixed(0)}%
         `)
@@ -413,7 +337,7 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
             fontSize: '12px',
             border: `1px solid ${displayProps.color}40`
           }}>
-            📊 {dataType.toUpperCase()} - {data[dataType].length} days
+            📊 {dataType.toUpperCase()} - {data[dataType].length} entries
           </div>
           <div style={{ 
             padding: '4px 8px', 
@@ -467,10 +391,10 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
       }}>
         <p style={{ margin: '5px 0' }}>
           <strong>Smooth Zoom:</strong> Gradually reveals more detail as you zoom in. 
-          Color transitions from light to dark {displayProps.color}.
+          Data points now show at their actual timestamps.
         </p>
         <p style={{ margin: '5px 0' }}>
-          At 0% detail: Daily averages only | At 100% detail: All individual readings
+          At 0% detail: Averages only | At 100% detail: All individual readings with precise timing
         </p>
       </div>
     </div>
@@ -479,8 +403,6 @@ const ZoomableEnvironmentalGraph = ({ data, dataType }) => {
 
 // Demo component showing how to use the flexible graph
 const NewGraph = ({data, dataType}) => {
-  // const [selectedDataType, setSelectedDataType] = useState('temp');
-
   return (
     <div>
       <div style={{ 
