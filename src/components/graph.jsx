@@ -335,10 +335,10 @@ const AirQualityDashboard = ({ data }) => {
         {/* Stats Cards */}
         {stats.current != null && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ backgroundColor: '#dcfce7', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-              {/* <div style={{ fontSize: '14px', color: '#16a34a' }}>Current</div>
-              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>{stats.current}{metrics[selectedMetric].unit}</div> */}
-            </div>
+            {/* <div style={{ backgroundColor: '#dcfce7', padding: '16px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+               <div style={{ fontSize: '14px', color: '#16a34a' }}>Current</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#15803d' }}>{stats.current}{metrics[selectedMetric].unit}</div> 
+            </div> */}
             <div style={{ backgroundColor: '#dbeafe', padding: '16px', borderRadius: '8px', border: '1px solid #93c5fd' }}>
               <div style={{ fontSize: '14px', color: '#2563eb' }}>Average</div>
               <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1d4ed8' }}>{stats.average}{metrics[selectedMetric].unit}</div>
