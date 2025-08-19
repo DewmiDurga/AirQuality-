@@ -1326,7 +1326,7 @@ const AirQualityDashboard = ({ data }) => {
               fontWeight: 'bold', 
               color: '#1f2937', 
               margin: 0 
-            }}>Interactive Air Quality Dashboard</h1>
+            }}>Previous Charts</h1>
           </div>
         </div>
 

@@ -276,7 +276,7 @@ const BreathEasyDashboard = () => {
                     >
                         Current Readings
                     </button>
-                    <button
+                    {/* <button
     onClick={() => setActiveSection('graph')}
     style={{
         backgroundColor: activeSection === 'graph' ? '#295dc3ff' : 'rgba(41, 93, 195, 0.7)',
@@ -291,7 +291,7 @@ const BreathEasyDashboard = () => {
     }}
 >
     Previous Charts 
-</button>
+</button> */}
                     <button
                         onClick={() => setActiveSection('contact')}
                         style={{
